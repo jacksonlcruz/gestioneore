@@ -66,11 +66,13 @@ export function Navbar() {
   if (pathname === publicRoute) return null
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60 shadow-sm">
       <div className="container flex h-16 items-center justify-between px-4 md:px-6">
         {/* Logo / Titolo */}
-        <Link href="/" className="flex items-center gap-2">
-          <Clock className="h-6 w-6 text-primary" />
+        <Link href="/" className="flex items-center gap-2.5 transition-opacity hover:opacity-80">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10">
+            <Clock className="h-5 w-5 text-primary" />
+          </div>
           <span className="text-lg font-semibold tracking-tight">
             Gestione Ore
           </span>
@@ -86,18 +88,20 @@ export function Navbar() {
                 buttonVariants({
                   variant: pathname === link.href ? "secondary" : "ghost",
                   size: "sm",
-                })
+                }),
+                "min-h-[44px] rounded-lg px-4 text-sm font-medium transition-all duration-150",
+                pathname === link.href && "shadow-sm"
               )}
             >
               {link.label}
             </Link>
           ))}
           {userName && (
-            <span className="mx-2 text-sm text-muted-foreground">
+            <span className="mx-2 px-2 py-1 text-sm text-muted-foreground rounded-md bg-muted/50">
               {userName}
             </span>
           )}
-          <Button variant="ghost" size="icon" onClick={handleLogout} aria-label="Esci">
+          <Button variant="ghost" size="icon" onClick={handleLogout} aria-label="Esci" className="rounded-lg min-h-[44px] min-w-[44px]">
             <LogOut className="h-4 w-4" />
           </Button>
         </nav>
@@ -107,7 +111,7 @@ export function Navbar() {
           type="button"
           className={cn(
             buttonVariants({ variant: "ghost", size: "icon" }),
-            "md:hidden"
+            "md:hidden rounded-lg min-h-[44px] min-w-[44px]"
           )}
           onClick={() => setIsOpen(!isOpen)}
           aria-label={isOpen ? "Chiudi menu" : "Apri menu"}
@@ -118,30 +122,34 @@ export function Navbar() {
 
       {/* Menu mobile */}
       {isOpen && (
-        <nav className="border-t bg-background px-4 py-2 md:hidden">
-          {filteredLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              onClick={() => setIsOpen(false)}
-              className={cn(
-                buttonVariants({
-                  variant: pathname === link.href ? "secondary" : "ghost",
-                }),
-                "w-full justify-start"
-              )}
-            >
-              {link.label}
-            </Link>
-          ))}
+        <nav className="animate-slide-in-top border-t border-border/40 bg-background/95 backdrop-blur-xl px-4 py-3 md:hidden">
+          <div className="space-y-1">
+            {filteredLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={() => setIsOpen(false)}
+                className={cn(
+                  buttonVariants({
+                    variant: pathname === link.href ? "secondary" : "ghost",
+                  }),
+                  "w-full justify-start min-h-[44px] rounded-lg text-sm font-medium"
+                )}
+              >
+                {link.label}
+              </Link>
+            ))}
+          </div>
           {userName && (
-            <p className="px-3 py-2 text-sm text-muted-foreground">
-              {userName}
-            </p>
+            <div className="mt-3 border-t border-border/40 pt-3">
+              <p className="px-3 py-2 text-sm text-muted-foreground rounded-md bg-muted/50">
+                {userName}
+              </p>
+            </div>
           )}
           <Button
             variant="ghost"
-            className="w-full justify-start text-destructive"
+            className="mt-2 w-full justify-start min-h-[44px] rounded-lg text-destructive hover:text-destructive hover:bg-destructive/10"
             onClick={handleLogout}
           >
             <LogOut className="h-4 w-4" />

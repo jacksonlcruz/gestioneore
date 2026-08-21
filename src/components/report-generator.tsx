@@ -306,12 +306,12 @@ export function ReportGenerator() {
       </div>
 
       <Tabs defaultValue="employee">
-        <TabsList className="w-full md:w-auto">
-          <TabsTrigger value="employee" className="flex-1 md:flex-none">
+        <TabsList className="w-full md:w-auto rounded-xl p-1 bg-muted/50">
+          <TabsTrigger value="employee" className="flex-1 md:flex-none rounded-lg data-[state=active]:shadow-sm">
             <User className="h-4 w-4" />
             Report per Dipendente / Collaboratore
           </TabsTrigger>
-          <TabsTrigger value="client" className="flex-1 md:flex-none">
+          <TabsTrigger value="client" className="flex-1 md:flex-none rounded-lg data-[state=active]:shadow-sm">
             <Building2 className="h-4 w-4" />
             Report per Cliente
           </TabsTrigger>
@@ -319,8 +319,8 @@ export function ReportGenerator() {
 
         {/* Employee tab */}
         <TabsContent value="employee" className="space-y-4">
-          <Card>
-            <CardHeader>
+          <Card className="shadow-md border-border/50 rounded-2xl">
+            <CardHeader className="pb-4">
               <CardTitle className="text-base">Filtri Report Dipendente</CardTitle>
               <CardDescription>
                 Seleziona mese e lavoratore per generare il report
@@ -329,10 +329,11 @@ export function ReportGenerator() {
             <CardContent>
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="employee-month">Mese/Anno</Label>
+                  <Label htmlFor="employee-month" className="text-sm font-medium">Mese/Anno</Label>
                   <Input
                     id="employee-month"
                     type="month"
+                    className="rounded-lg"
                     value={`${parseMonthLabel(employeeMonth).year}-${String(parseMonthLabel(employeeMonth).month + 1).padStart(2, "0")}`}
                     onChange={(e) => {
                       const [year, month] = e.target.value.split("-")
@@ -341,7 +342,7 @@ export function ReportGenerator() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Lavoratore</Label>
+                  <Label className="text-sm font-medium">Lavoratore</Label>
                   <Select
                     items={workers.map((w) => ({
                       label: w.name,
@@ -350,7 +351,7 @@ export function ReportGenerator() {
                     value={selectedWorkerId || null}
                     onValueChange={(value) => setSelectedWorkerId(value ?? "")}
                   >
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger className="w-full rounded-lg">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -367,8 +368,8 @@ export function ReportGenerator() {
           </Card>
 
           {selectedWorkerId && employeeLoaded && selectedWorker && (
-            <Card>
-              <CardHeader>
+            <Card className="shadow-md border-border/50 rounded-2xl overflow-hidden">
+              <CardHeader className="pb-4">
                 <CardTitle className="text-base">Anteprima Report</CardTitle>
                 <CardDescription>
                   {selectedWorker.name} — {employeeMonth}
@@ -377,33 +378,35 @@ export function ReportGenerator() {
               <CardContent className="space-y-4">
                 {employeeRows.length === 0 ? (
                   <div className="flex flex-col items-center gap-2 py-8 text-center">
-                    <CalendarDays className="h-10 w-10 text-muted-foreground" />
+                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted">
+                      <CalendarDays className="h-7 w-7 text-muted-foreground" />
+                    </div>
                     <p className="text-muted-foreground">
                       Nessun dato trovato per il periodo selezionato.
                     </p>
                   </div>
                 ) : (
                   <>
-                    <div className="overflow-x-auto">
+                    <div className="overflow-x-auto rounded-xl border border-border/50">
                       <Table>
                         <TableHeader>
-                          <TableRow>
-                            <TableHead>Data</TableHead>
-                            <TableHead>Cliente</TableHead>
-                            <TableHead>Orario</TableHead>
-                            <TableHead>Durata (ore)</TableHead>
-                            <TableHead>Note</TableHead>
+                          <TableRow className="bg-muted/50 hover:bg-muted/50">
+                            <TableHead className="font-semibold">Data</TableHead>
+                            <TableHead className="font-semibold">Cliente</TableHead>
+                            <TableHead className="font-semibold">Orario</TableHead>
+                            <TableHead className="font-semibold">Durata (ore)</TableHead>
+                            <TableHead className="font-semibold">Note</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {employeeRows.map((row, i) => (
-                            <TableRow key={i}>
-                              <TableCell>{row.date}</TableCell>
-                              <TableCell>{row.clientName}</TableCell>
-                              <TableCell>
+                            <TableRow key={i} className={i % 2 === 1 ? "bg-muted/20" : ""}>
+                              <TableCell className="whitespace-nowrap">{row.date}</TableCell>
+                              <TableCell className="font-medium">{row.clientName}</TableCell>
+                              <TableCell className="whitespace-nowrap">
                                 {row.startTime} - {row.endTime}
                               </TableCell>
-                              <TableCell>{row.durationHours.toFixed(2)}</TableCell>
+                              <TableCell className="font-medium">{row.durationHours.toFixed(2)}</TableCell>
                               <TableCell className="max-w-[200px] truncate">
                                 {row.observation || (
                                   <span className="text-xs text-muted-foreground">
@@ -417,8 +420,8 @@ export function ReportGenerator() {
                       </Table>
                     </div>
 
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                      <p className="text-sm font-medium">
+                    <div className="flex flex-col gap-4 rounded-xl bg-muted/30 p-4 sm:flex-row sm:items-center sm:justify-between border border-border/50">
+                      <p className="text-sm font-semibold">
                         Totale Ore Lavorate nel Mese:{" "}
                         <span className="text-primary">
                           {employeeTotal.toFixed(2)} ore
@@ -435,7 +438,7 @@ export function ReportGenerator() {
                         fileName={`report-dipendente-${selectedWorker.name.replace(/\s+/g, "-").toLowerCase()}-${employeeMonth.replace(/\s+/g, "-").toLowerCase()}.pdf`}
                       >
                         {({ loading }) => (
-                          <Button disabled={loading}>
+                          <Button disabled={loading} className="rounded-xl shadow-sm">
                             <Download className="h-4 w-4" />
                             {loading ? "Generazione PDF..." : "Scarica PDF"}
                           </Button>
@@ -451,8 +454,8 @@ export function ReportGenerator() {
 
         {/* Client tab */}
         <TabsContent value="client" className="space-y-4">
-          <Card>
-            <CardHeader>
+          <Card className="shadow-md border-border/50 rounded-2xl">
+            <CardHeader className="pb-4">
               <CardTitle className="text-base">Filtri Report Cliente</CardTitle>
               <CardDescription>
                 Seleziona mese e cliente per generare il report
@@ -461,10 +464,11 @@ export function ReportGenerator() {
             <CardContent>
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="client-month">Mese/Anno</Label>
+                  <Label htmlFor="client-month" className="text-sm font-medium">Mese/Anno</Label>
                   <Input
                     id="client-month"
                     type="month"
+                    className="rounded-lg"
                     value={`${parseMonthLabel(clientMonth).year}-${String(parseMonthLabel(clientMonth).month + 1).padStart(2, "0")}`}
                     onChange={(e) => {
                       const [year, month] = e.target.value.split("-")
@@ -473,7 +477,7 @@ export function ReportGenerator() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Cliente</Label>
+                  <Label className="text-sm font-medium">Cliente</Label>
                   <Select
                     items={clients.map((c) => ({
                       label: c.name,
@@ -482,7 +486,7 @@ export function ReportGenerator() {
                     value={selectedClientId || null}
                     onValueChange={(value) => setSelectedClientId(value ?? "")}
                   >
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger className="w-full rounded-lg">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -499,8 +503,8 @@ export function ReportGenerator() {
           </Card>
 
           {selectedClientId && clientLoaded && selectedClient && (
-            <Card>
-              <CardHeader>
+            <Card className="shadow-md border-border/50 rounded-2xl overflow-hidden">
+              <CardHeader className="pb-4">
                 <CardTitle className="text-base">Anteprima Report</CardTitle>
                 <CardDescription>
                   {selectedClient.name} — {clientMonth}
@@ -509,39 +513,41 @@ export function ReportGenerator() {
               <CardContent className="space-y-4">
                 {clientRows.length === 0 ? (
                   <div className="flex flex-col items-center gap-2 py-8 text-center">
-                    <CalendarDays className="h-10 w-10 text-muted-foreground" />
+                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted">
+                      <CalendarDays className="h-7 w-7 text-muted-foreground" />
+                    </div>
                     <p className="text-muted-foreground">
                       Nessun dato trovato per il periodo selezionato.
                     </p>
                   </div>
                 ) : (
                   <>
-                    <div className="overflow-x-auto">
+                    <div className="overflow-x-auto rounded-xl border border-border/50">
                       <Table>
                         <TableHeader>
-                          <TableRow>
-                            <TableHead>Data</TableHead>
-                            <TableHead>Partecipanti</TableHead>
-                            <TableHead>Orario / Durata</TableHead>
-                            <TableHead>Note</TableHead>
+                          <TableRow className="bg-muted/50 hover:bg-muted/50">
+                            <TableHead className="font-semibold">Data</TableHead>
+                            <TableHead className="font-semibold">Partecipanti</TableHead>
+                            <TableHead className="font-semibold">Orario / Durata</TableHead>
+                            <TableHead className="font-semibold">Note</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {clientRows.map((row, i) => (
-                            <TableRow key={i}>
-                              <TableCell>{row.date}</TableCell>
+                            <TableRow key={i} className={i % 2 === 1 ? "bg-muted/20" : ""}>
+                              <TableCell className="whitespace-nowrap">{row.date}</TableCell>
                               <TableCell>
                                 <div className="flex flex-wrap gap-1.5">
                                   {row.participants.map((p, j) => (
-                                    <Badge key={j} variant="secondary">
+                                    <Badge key={j} variant="secondary" className="rounded-lg text-xs font-normal">
                                       {p}
                                     </Badge>
                                   ))}
                                 </div>
                               </TableCell>
-                              <TableCell>
+                              <TableCell className="whitespace-nowrap">
                                 {row.startTime} - {row.endTime} (
-                                {row.durationHours.toFixed(2)} ore)
+                                <span className="font-medium">{row.durationHours.toFixed(2)} ore</span>)
                               </TableCell>
                               <TableCell className="max-w-[200px] truncate">
                                 {row.observation || (
@@ -556,8 +562,8 @@ export function ReportGenerator() {
                       </Table>
                     </div>
 
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                      <p className="text-sm font-medium">
+                    <div className="flex flex-col gap-4 rounded-xl bg-muted/30 p-4 sm:flex-row sm:items-center sm:justify-between border border-border/50">
+                      <p className="text-sm font-semibold">
                         Totale Ore Servizio nel Mese:{" "}
                         <span className="text-primary">
                           {clientTotal.toFixed(2)} ore
@@ -574,7 +580,7 @@ export function ReportGenerator() {
                         fileName={`report-cliente-${selectedClient.name.replace(/\s+/g, "-").toLowerCase()}-${clientMonth.replace(/\s+/g, "-").toLowerCase()}.pdf`}
                       >
                         {({ loading }) => (
-                          <Button disabled={loading}>
+                          <Button disabled={loading} className="rounded-xl shadow-sm">
                             <Download className="h-4 w-4" />
                             {loading ? "Generazione PDF..." : "Scarica PDF"}
                           </Button>

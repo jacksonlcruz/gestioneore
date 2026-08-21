@@ -320,10 +320,12 @@ export function InsertionForm() {
 
   return (
     <div className="mx-auto w-full max-w-2xl">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-xl md:text-2xl">
-            <Clock2 className="h-6 w-6 text-primary" />
+      <Card className="shadow-md border-border/50 rounded-2xl">
+        <CardHeader className="space-y-1 pb-6">
+          <CardTitle className="flex items-center gap-2.5 text-xl md:text-2xl">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10">
+              <Clock2 className="h-5 w-5 text-primary" />
+            </div>
             Nuovo Inserimento
           </CardTitle>
           <CardDescription>
@@ -338,7 +340,7 @@ export function InsertionForm() {
             >
               {/* Cliente */}
               <div className="space-y-2">
-                <Label>Cliente</Label>
+                <Label className="text-sm font-medium">Cliente</Label>
                 <AutocompleteInput
                   items={clientItems}
                   value={form.watch("clientId") ?? ""}
@@ -352,6 +354,7 @@ export function InsertionForm() {
                       size="icon"
                       onClick={() => setIsNewClientOpen(true)}
                       aria-label="Nuovo cliente"
+                      className="rounded-lg"
                     >
                       <Plus className="h-4 w-4" />
                     </Button>
@@ -365,13 +368,14 @@ export function InsertionForm() {
               </div>
 
               {/* Data e Orari */}
-              <div className="space-y-4">
+              <div className="rounded-xl bg-muted/30 p-4 space-y-4 border border-border/50">
                 <div className="space-y-2">
-                  <Label htmlFor="date">Data</Label>
+                  <Label htmlFor="date" className="text-sm font-medium">Data</Label>
                   <Input
                     id="date"
                     type="date"
                     {...form.register("date")}
+                    className="rounded-lg"
                   />
                   {form.formState.errors.date && (
                     <p className="text-sm text-destructive">
@@ -382,11 +386,12 @@ export function InsertionForm() {
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor="start-time">Ora Inizio</Label>
+                    <Label htmlFor="start-time" className="text-sm font-medium">Ora Inizio</Label>
                     <Input
                       id="start-time"
                       type="time"
                       {...form.register("startTime")}
+                      className="rounded-lg"
                     />
                     {form.formState.errors.startTime && (
                       <p className="text-sm text-destructive">
@@ -396,11 +401,12 @@ export function InsertionForm() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="end-time">Ora Fine</Label>
+                    <Label htmlFor="end-time" className="text-sm font-medium">Ora Fine</Label>
                     <Input
                       id="end-time"
                       type="time"
                       {...form.register("endTime")}
+                      className="rounded-lg"
                     />
                     {form.formState.errors.endTime && (
                       <p className="text-sm text-destructive">
@@ -411,21 +417,24 @@ export function InsertionForm() {
                 </div>
 
                 {duration && (
-                  <p className="text-sm font-medium text-primary">
+                  <div className="flex items-center gap-2 rounded-lg bg-primary/10 px-3 py-2 text-sm font-medium text-primary">
+                    <Clock2 className="h-4 w-4" />
                     Durata calcolata: {duration}
-                  </p>
+                  </div>
                 )}
               </div>
 
               {/* Partecipanti */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                  <Label>Chi ha lavorato?</Label>
+              <div className="rounded-xl bg-muted/30 p-4 space-y-4 border border-border/50">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10">
+                    <Users className="h-4 w-4 text-primary" />
+                  </div>
+                  <Label className="text-sm font-medium">Chi ha lavorato?</Label>
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Dipendenti</Label>
+                  <Label className="text-sm text-muted-foreground">Dipendenti</Label>
                   <AutocompleteInput
                     items={employeeItems}
                     placeholder="Inizia a digitare il nome..."
@@ -445,13 +454,16 @@ export function InsertionForm() {
                         <Badge
                           key={emp.value}
                           variant="secondary"
-                          className="gap-1 pr-1"
+                          className="gap-1.5 pr-1.5 py-1 rounded-lg text-sm font-normal"
                         >
+                          <div className="flex h-5 w-5 items-center justify-center rounded-md bg-primary/10">
+                            <Users className="h-3 w-3 text-primary" />
+                          </div>
                           {emp.label}
                           <button
                             type="button"
                             onClick={() => handleRemoveEmployee(emp.value)}
-                            className="ml-1 rounded-full p-0.5 hover:bg-muted-foreground/20"
+                            className="ml-0.5 rounded-full p-0.5 hover:bg-destructive/20 hover:text-destructive transition-colors"
                             aria-label={`Rimuovi ${emp.label}`}
                           >
                             <X className="h-3 w-3" />
@@ -463,7 +475,7 @@ export function InsertionForm() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Collaboratori Occasionali</Label>
+                  <Label className="text-sm text-muted-foreground">Collaboratori Occasionali</Label>
                   <AutocompleteInput
                     items={freelancerItems}
                     placeholder="Inizia a digitare il nome..."
@@ -483,6 +495,7 @@ export function InsertionForm() {
                         size="icon"
                         onClick={() => setIsNewFreelancerOpen(true)}
                         aria-label="Nuovo collaboratore occasionale"
+                        className="rounded-lg"
                       >
                         <UserPlus className="h-4 w-4" />
                       </Button>
@@ -494,13 +507,16 @@ export function InsertionForm() {
                         <Badge
                           key={frl.value}
                           variant="secondary"
-                          className="gap-1 pr-1"
+                          className="gap-1.5 pr-1.5 py-1 rounded-lg text-sm font-normal"
                         >
+                          <div className="flex h-5 w-5 items-center justify-center rounded-md bg-primary/10">
+                            <UserPlus className="h-3 w-3 text-primary" />
+                          </div>
                           {frl.label}
                           <button
                             type="button"
                             onClick={() => handleRemoveFreelancer(frl.value)}
-                            className="ml-1 rounded-full p-0.5 hover:bg-muted-foreground/20"
+                            className="ml-0.5 rounded-full p-0.5 hover:bg-destructive/20 hover:text-destructive transition-colors"
                             aria-label={`Rimuovi ${frl.label}`}
                           >
                             <X className="h-3 w-3" />
@@ -512,30 +528,30 @@ export function InsertionForm() {
                 </div>
 
                 {participantsError && (
-                  <p className="text-sm text-destructive">
+                  <div className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
                     {participantsError}
-                  </p>
+                  </div>
                 )}
               </div>
 
               {/* Note */}
               <div className="space-y-2">
-                <Label htmlFor="observation">Note / Ubicazione</Label>
+                <Label htmlFor="observation" className="text-sm font-medium">Note / Ubicazione</Label>
                 <Input
                   id="observation"
                   {...form.register("observation")}
                   placeholder="Es. Casa 1, Pod 2"
-                  className="h-auto min-h-[80px] py-2"
+                  className="h-auto min-h-[80px] py-2 rounded-lg resize-none"
                 />
               </div>
 
               <Button
                 type="submit"
-                className="w-full"
+                className="w-full rounded-xl h-12 text-base font-medium shadow-sm transition-all duration-150 hover:shadow-md"
                 size="lg"
                 disabled={isSubmitting}
               >
-                <Save className="h-4 w-4" />
+                <Save className="h-5 w-5" />
                 {isSubmitting ? "Salvataggio..." : "Salva Registrazione"}
               </Button>
             </form>
