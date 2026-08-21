@@ -97,6 +97,7 @@ interface EmployeeDialogState {
   email: string
   password: string
   role: "employee" | "admin"
+  isActive: boolean
 }
 
 const initialEntityDialog: EntityDialogState = {
@@ -117,6 +118,7 @@ const initialEmployeeDialog: EmployeeDialogState = {
   email: "",
   password: "",
   role: "employee",
+  isActive: true,
 }
 
 export function GestioneManager() {
@@ -256,12 +258,19 @@ export function GestioneManager() {
       email: profile.email ?? "",
       password: "",
       role: profile.role,
+      isActive: profile.is_active ?? true,
     })
   }
 
   async function handleSaveEmployee() {
     const d = employeeDialog
-    if (!d.fullName.trim() || !d.email.trim()) {
+
+    if (!d.fullName.trim()) {
+      toast.add({ title: "Errore", description: "Il nome è obbligatorio", type: "error" })
+      return
+    }
+
+    if (d.mode === "create" && !d.email.trim()) {
       toast.add({ title: "Errore", description: "Nome e email sono obbligatori", type: "error" })
       return
     }
@@ -301,11 +310,12 @@ export function GestioneManager() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             userId: d.editId,
-            email: d.email.trim(),
+            email: d.email.trim() || undefined,
             password: d.password || undefined,
             fullName: d.fullName.trim(),
             username: d.username.trim() || null,
             role: d.role,
+            isActive: d.isActive,
           }),
         })
 
@@ -314,6 +324,20 @@ export function GestioneManager() {
           toast.add({ title: "Errore", description: data.message || "Errore durante l'aggiornamento", type: "error" })
           return
         }
+
+        // Update local state
+        const emailToUpdate = d.email.trim() || undefined
+        setProfiles((prev) =>
+          prev.map((p) =>
+            p.id === d.editId
+              ? {
+                  ...p,
+                  is_active: d.isActive,
+                  ...(emailToUpdate !== undefined ? { email: emailToUpdate } : {}),
+                }
+              : p
+          )
+        )
 
         toast.add({ title: "Dipendente aggiornato con successo!", type: "success" })
       }
@@ -451,8 +475,8 @@ export function GestioneManager() {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <Badge variant={profile.is_active ? "default" : "destructive"} className="gap-1">
-                            {profile.is_active ? (
+                          <Badge variant={(profile.is_active ?? true) ? "default" : "destructive"} className="gap-1">
+                            {(profile.is_active ?? true) ? (
                               <><UserCheck className="h-3 w-3" /> Attivo</>
                             ) : (
                               <><UserX className="h-3 w-3" /> Inattivo</>
@@ -474,9 +498,9 @@ export function GestioneManager() {
                               size="icon"
                               onClick={() => handleToggleActive(profile)}
                               disabled={isToggling === profile.id}
-                              aria-label={profile.is_active ? "Disattiva" : "Attiva"}
+                              aria-label={(profile.is_active ?? true) ? "Disattiva" : "Attiva"}
                             >
-                              {profile.is_active ? (
+                              {(profile.is_active ?? true) ? (
                                 <UserX className="h-4 w-4 text-destructive" />
                               ) : (
                                 <UserCheck className="h-4 w-4 text-green-600" />
@@ -731,6 +755,23 @@ export function GestioneManager() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-2">
+              <Label>Stato</Label>
+              <Select
+                value={employeeDialog.isActive ? "true" : "false"}
+                onValueChange={(value) =>
+                  setEmployeeDialog((p) => ({ ...p, isActive: value === "true" }))
+                }
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="true">Attivo</SelectItem>
+                  <SelectItem value="false">Inattivo</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEmployeeDialog(initialEmployeeDialog)}>
@@ -738,7 +779,11 @@ export function GestioneManager() {
             </Button>
             <Button
               onClick={handleSaveEmployee}
-              disabled={!employeeDialog.fullName.trim() || !employeeDialog.email.trim() || isSaving}
+              disabled={
+                !employeeDialog.fullName.trim() ||
+                (employeeDialog.mode === "create" && !employeeDialog.email.trim()) ||
+                isSaving
+              }
             >
               {isSaving ? "Salvataggio..." : "Salva"}
             </Button>
