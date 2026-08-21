@@ -269,12 +269,13 @@ export function ReportGenerator() {
             if (p.freelancers?.name) return p.freelancers.name
             return "Sconosciuto"
           })
+          const shiftHours = toDurationHours(r.start_time, r.end_time)
           return {
             date: formatDateDDMMYYYY(r.date),
             participants,
             startTime: formatTime(r.start_time),
             endTime: formatTime(r.end_time),
-            durationHours: toDurationHours(r.start_time, r.end_time),
+            durationHours: shiftHours * participants.length,
             observation: r.observation,
           }
         })
@@ -332,7 +333,7 @@ export function ReportGenerator() {
                   <Input
                     id="employee-month"
                     type="month"
-                    value={employeeMonth}
+                    value={`${parseMonthLabel(employeeMonth).year}-${String(parseMonthLabel(employeeMonth).month + 1).padStart(2, "0")}`}
                     onChange={(e) => {
                       const [year, month] = e.target.value.split("-")
                       setEmployeeMonth(`${MONTHS_IT[Number(month) - 1]} ${year}`)

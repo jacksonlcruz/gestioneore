@@ -59,7 +59,6 @@ export function Navbar() {
     : navLinks.filter(
         (l) =>
           l.href !== "/gestione" &&
-          l.href !== "/report" &&
           l.href !== "/admin"
       )
 
