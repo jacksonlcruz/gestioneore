@@ -15,10 +15,15 @@ export type ClientReportRow = {
   observation: string | null
 }
 
-type ClientReportPDFProps = {
+export type ClientReportData = {
   clientName: string
   monthLabel: string
   rows: ClientReportRow[]
+}
+
+type ClientReportPDFProps = {
+  clientsData: ClientReportData[]
+  monthLabel: string
 }
 
 const styles = StyleSheet.create({
@@ -71,51 +76,72 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     textAlign: "right",
   },
+  emptyState: {
+    marginTop: 40,
+    fontSize: 12,
+    textAlign: "center",
+    color: "#888",
+  },
 })
 
-export function ClientReportPDF({
-  clientName,
-  monthLabel,
-  rows,
-}: ClientReportPDFProps) {
-  const totalHours = rows.reduce(
+function ClientPage({ data }: { data: ClientReportData }) {
+  const totalHours = data.rows.reduce(
     (sum, row) => sum + row.durationHours,
     0
   )
 
   return (
-    <Document>
-      <Page size="A4" style={styles.page}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Rapporto Mensile Cliente</Text>
-          <Text style={styles.subtitle}>Cliente: {clientName}</Text>
-          <Text style={styles.meta}>Mese/Anno: {monthLabel}</Text>
-        </View>
+    <Page size="A4" style={styles.page}>
+      <View style={styles.header}>
+        <Text style={styles.title}>Rapporto Mensile Cliente</Text>
+        <Text style={styles.subtitle}>Cliente: {data.clientName}</Text>
+        <Text style={styles.meta}>Mese/Anno: {data.monthLabel}</Text>
+      </View>
 
-        <View style={styles.tableHeader}>
-          <Text style={styles.colDate}>Data</Text>
-          <Text style={styles.colParticipants}>Partecipanti</Text>
-          <Text style={styles.colTime}>Orario / Durata</Text>
-          <Text style={styles.colNote}>Note/Ubicazione</Text>
-        </View>
-
-        {rows.map((row, index) => (
-          <View key={index} style={styles.tableRow}>
-            <Text style={styles.colDate}>{row.date}</Text>
-            <Text style={styles.colParticipants}>
-              {row.participants.join(", ")}
-            </Text>
-            <Text style={styles.colTime}>
-              {row.startTime} - {row.endTime} ({row.durationHours.toFixed(2)} ore)
-            </Text>
-            <Text style={styles.colNote}>{row.observation || "-"}</Text>
-          </View>
-        ))}
-
-        <Text style={styles.footer}>
-          Totale Ore Servizio nel Mese: {totalHours.toFixed(2)} ore
+      {data.rows.length === 0 ? (
+        <Text style={styles.emptyState}>
+          Nessuna registrazione trovata per il periodo selezionato.
         </Text>
-      </Page>
+      ) : (
+        <>
+          <View style={styles.tableHeader}>
+            <Text style={styles.colDate}>Data</Text>
+            <Text style={styles.colParticipants}>Partecipanti</Text>
+            <Text style={styles.colTime}>Orario / Durata</Text>
+            <Text style={styles.colNote}>Note/Ubicazione</Text>
+          </View>
+
+          {data.rows.map((row, index) => (
+            <View key={index} style={styles.tableRow}>
+              <Text style={styles.colDate}>{row.date}</Text>
+              <Text style={styles.colParticipants}>
+                {row.participants.join(", ")}
+              </Text>
+              <Text style={styles.colTime}>
+                {row.startTime} - {row.endTime} ({row.durationHours.toFixed(2)} ore)
+              </Text>
+              <Text style={styles.colNote}>{row.observation || "-"}</Text>
+            </View>
+          ))}
+
+          <Text style={styles.footer}>
+            Totale Ore Servizio nel Mese: {totalHours.toFixed(2)} ore
+          </Text>
+        </>
+      )}
+    </Page>
+  )
+}
+
+export function ClientReportPDF({
+  clientsData,
+  monthLabel: _monthLabel,
+}: ClientReportPDFProps) {
+  return (
+    <Document>
+      {clientsData.map((data, index) => (
+        <ClientPage key={index} data={data} />
+      ))}
     </Document>
   )
 }
