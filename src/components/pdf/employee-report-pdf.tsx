@@ -15,10 +15,16 @@ export type EmployeeReportRow = {
   observation: string | null
 }
 
-type EmployeeReportPDFProps = {
+export type WorkerReportData = {
   workerName: string
+  workerType: "employee" | "freelancer"
   monthLabel: string
   rows: EmployeeReportRow[]
+}
+
+type EmployeeReportPDFProps = {
+  workersData: WorkerReportData[]
+  monthLabel: string
 }
 
 const styles = StyleSheet.create({
@@ -72,51 +78,81 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     textAlign: "right",
   },
+  emptyState: {
+    marginTop: 40,
+    fontSize: 12,
+    textAlign: "center",
+    color: "#888",
+  },
 })
 
-export function EmployeeReportPDF({
-  workerName,
-  monthLabel,
-  rows,
-}: EmployeeReportPDFProps) {
-  const totalHours = rows.reduce(
+function WorkerPage({ data }: { data: WorkerReportData }) {
+  const isFreelancer = data.workerType === "freelancer"
+  const totalHours = data.rows.reduce(
     (sum, row) => sum + row.durationHours,
     0
   )
 
   return (
-    <Document>
-      <Page size="A4" style={styles.page}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Rapporto Mensile Dipendente</Text>
-          <Text style={styles.subtitle}>Dipendente: {workerName}</Text>
-          <Text style={styles.meta}>Mese/Anno: {monthLabel}</Text>
-        </View>
-
-        <View style={styles.tableHeader}>
-          <Text style={styles.colDate}>Data</Text>
-          <Text style={styles.colClient}>Cliente</Text>
-          <Text style={styles.colTime}>Orario (Inizio - Fine)</Text>
-          <Text style={styles.colDuration}>Durata (ore)</Text>
-          <Text style={styles.colNote}>Note/Ubicazione</Text>
-        </View>
-
-        {rows.map((row, index) => (
-          <View key={index} style={styles.tableRow}>
-            <Text style={styles.colDate}>{row.date}</Text>
-            <Text style={styles.colClient}>{row.clientName}</Text>
-            <Text style={styles.colTime}>
-              {row.startTime} - {row.endTime}
-            </Text>
-            <Text style={styles.colDuration}>{row.durationHours.toFixed(2)}</Text>
-            <Text style={styles.colNote}>{row.observation || "-"}</Text>
-          </View>
-        ))}
-
-        <Text style={styles.footer}>
-          Totale Ore Lavorate nel Mese: {totalHours.toFixed(2)} ore
+    <Page size="A4" style={styles.page}>
+      <View style={styles.header}>
+        <Text style={styles.title}>
+          {isFreelancer
+            ? "Rapporto Mensile Collaboratore Occasionale"
+            : "Rapporto Mensile Dipendente"}
         </Text>
-      </Page>
+        <Text style={styles.subtitle}>
+          {isFreelancer
+            ? `Collaboratore: ${data.workerName}`
+            : `Dipendente: ${data.workerName}`}
+        </Text>
+        <Text style={styles.meta}>Mese/Anno: {data.monthLabel}</Text>
+      </View>
+
+      {data.rows.length === 0 ? (
+        <Text style={styles.emptyState}>
+          Nessuna registrazione trovata per il periodo selezionato.
+        </Text>
+      ) : (
+        <>
+          <View style={styles.tableHeader}>
+            <Text style={styles.colDate}>Data</Text>
+            <Text style={styles.colClient}>Cliente</Text>
+            <Text style={styles.colTime}>Orario (Inizio - Fine)</Text>
+            <Text style={styles.colDuration}>Durata (ore)</Text>
+            <Text style={styles.colNote}>Note/Ubicazione</Text>
+          </View>
+
+          {data.rows.map((row, index) => (
+            <View key={index} style={styles.tableRow}>
+              <Text style={styles.colDate}>{row.date}</Text>
+              <Text style={styles.colClient}>{row.clientName}</Text>
+              <Text style={styles.colTime}>
+                {row.startTime} - {row.endTime}
+              </Text>
+              <Text style={styles.colDuration}>{row.durationHours.toFixed(2)}</Text>
+              <Text style={styles.colNote}>{row.observation || "-"}</Text>
+            </View>
+          ))}
+
+          <Text style={styles.footer}>
+            Totale Ore Lavorate nel Mese: {totalHours.toFixed(2)} ore
+          </Text>
+        </>
+      )}
+    </Page>
+  )
+}
+
+export function EmployeeReportPDF({
+  workersData,
+  monthLabel: _monthLabel,
+}: EmployeeReportPDFProps) {
+  return (
+    <Document>
+      {workersData.map((data, index) => (
+        <WorkerPage key={index} data={data} />
+      ))}
     </Document>
   )
 }
