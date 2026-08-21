@@ -412,7 +412,7 @@ export function GestioneManager() {
       </div>
 
       <Tabs defaultValue="employees">
-        <TabsList className="w-full md:w-auto">
+        <TabsList className="w-full md:w-auto rounded-xl p-1 bg-muted/50">
           <TabsTrigger value="employees" className="flex-1 md:flex-none">
             <Users className="h-4 w-4" />
             Gestione Utenti
@@ -429,7 +429,7 @@ export function GestioneManager() {
 
         {/* 👥 Gestione Utenti */}
         <TabsContent value="employees" className="space-y-4">
-          <Card>
+          <Card className="shadow-md border-border/50 rounded-2xl overflow-hidden">
             <CardHeader className="flex flex-row items-center justify-between space-y-0">
               <div>
                 <CardTitle className="text-base">Gestione Utenti</CardTitle>
@@ -519,7 +519,7 @@ export function GestioneManager() {
 
         {/* 🏢 Gestione Clienti */}
         <TabsContent value="clients" className="space-y-4">
-          <Card>
+          <Card className="shadow-md border-border/50 rounded-2xl overflow-hidden">
             <CardHeader className="flex flex-row items-center justify-between space-y-0">
               <div>
                 <CardTitle className="text-base">Gestione Clienti</CardTitle>
@@ -585,7 +585,7 @@ export function GestioneManager() {
 
         {/* 👤 Collaboratori Esterni */}
         <TabsContent value="freelancers" className="space-y-4">
-          <Card>
+          <Card className="shadow-md border-border/50 rounded-2xl overflow-hidden">
             <CardHeader className="flex flex-row items-center justify-between space-y-0">
               <div>
                 <CardTitle className="text-base">Collaboratori Esterni</CardTitle>

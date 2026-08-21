@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { CalendarDays, Eraser, Trash2 } from "lucide-react"
+import { CalendarDays, Clock, Eraser, Trash2 } from "lucide-react"
 
 import { createClient } from "@/lib/supabase/client"
 import type { Database } from "@/types/database.types"
@@ -206,8 +206,8 @@ export function RegistroList() {
       </div>
 
       {/* Filtri */}
-      <Card>
-        <CardHeader>
+      <Card className="shadow-md border-border/50 rounded-2xl">
+        <CardHeader className="pb-4">
           <CardTitle className="text-base">Filtri</CardTitle>
           <CardDescription>
             Filtra le registrazioni per cliente e periodo
@@ -216,13 +216,13 @@ export function RegistroList() {
         <CardContent>
           <div className="grid gap-4 md:grid-cols-4">
             <div className="space-y-2 md:col-span-2">
-              <Label>Filtra per cliente</Label>
+              <Label className="text-sm font-medium">Filtra per cliente</Label>
               <Select
                 items={clients.map((c) => ({ label: c.name, value: c.id }))}
                 value={filterClientId || null}
                 onValueChange={(value) => setFilterClientId(value ?? "")}
               >
-                <SelectTrigger className="w-full">
+                <SelectTrigger className="w-full rounded-lg">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -237,29 +237,31 @@ export function RegistroList() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="start-date">Data inizio</Label>
+              <Label htmlFor="start-date" className="text-sm font-medium">Data inizio</Label>
               <Input
                 id="start-date"
                 type="date"
                 value={filterStartDate}
                 onChange={(e) => setFilterStartDate(e.target.value)}
+                className="rounded-lg"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="end-date">Data fine</Label>
+              <Label htmlFor="end-date" className="text-sm font-medium">Data fine</Label>
               <Input
                 id="end-date"
                 type="date"
                 value={filterEndDate}
                 onChange={(e) => setFilterEndDate(e.target.value)}
+                className="rounded-lg"
               />
             </div>
           </div>
 
           {hasFilters && (
             <div className="mt-4">
-              <Button variant="outline" size="sm" onClick={clearFilters}>
+              <Button variant="outline" size="sm" onClick={clearFilters} className="rounded-lg">
                 <Eraser className="h-4 w-4" />
                 Pulisci filtri
               </Button>
@@ -274,9 +276,11 @@ export function RegistroList() {
           Caricamento registrazioni...
         </p>
       ) : showEmptyState ? (
-        <Card>
+        <Card className="shadow-md border-border/50 rounded-2xl">
           <CardContent className="flex flex-col items-center gap-2 py-12 text-center">
-            <CalendarDays className="h-10 w-10 text-muted-foreground" />
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted">
+              <CalendarDays className="h-7 w-7 text-muted-foreground" />
+            </div>
             <p className="text-muted-foreground">
               Nessuna registrazione trovata.
             </p>
@@ -285,39 +289,43 @@ export function RegistroList() {
       ) : (
         <>
           {/* Mobile: Cards */}
-          <div className="space-y-4 md:hidden">
+          <div className="space-y-3 md:hidden">
             {records.map((record) => (
-              <Card key={record.id}>
+              <Card key={record.id} className="shadow-sm border-border/50 rounded-xl overflow-hidden">
                 <CardContent className="space-y-3 pt-4">
                   <div className="flex items-start justify-between gap-2">
                     <div className="space-y-1">
-                      <p className="font-medium">{record.clients?.name}</p>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="font-semibold text-[15px]">{record.clients?.name}</p>
+                      <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                        <CalendarDays className="h-3.5 w-3.5" />
                         {formatDate(record.date)}
-                      </p>
+                      </div>
                     </div>
                     <Button
                       variant="ghost"
                       size="icon"
                       onClick={() => setDeleteTarget(record)}
                       aria-label="Elimina registrazione"
-                      className="text-destructive"
+                      className="text-destructive rounded-lg min-h-[44px] min-w-[44px]"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
 
-                  <p className="text-sm">
-                    {formatTime(record.start_time)} - {formatTime(record.end_time)}{" "}
-                    <span className="text-muted-foreground">
-                      ({calculateDuration(record.start_time, record.end_time)})
-                    </span>
-                  </p>
+                  <div className="flex items-center gap-2 rounded-lg bg-muted/40 px-3 py-2">
+                    <Clock className="h-4 w-4 text-primary" />
+                    <p className="text-sm font-medium">
+                      {formatTime(record.start_time)} - {formatTime(record.end_time)}{" "}
+                      <span className="text-muted-foreground font-normal">
+                        ({calculateDuration(record.start_time, record.end_time)})
+                      </span>
+                    </p>
+                  </div>
 
                   {record.service_participants.length > 0 && (
                     <div className="flex flex-wrap gap-1.5">
                       {record.service_participants.map((p) => (
-                        <Badge key={p.id} variant="secondary">
+                        <Badge key={p.id} variant="secondary" className="rounded-lg text-xs font-normal">
                           {participantName(p)}
                         </Badge>
                       ))}
@@ -325,7 +333,7 @@ export function RegistroList() {
                   )}
 
                   {record.observation && (
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-muted-foreground border-t border-border/40 pt-2">
                       {record.observation}
                     </p>
                   )}
@@ -335,22 +343,22 @@ export function RegistroList() {
           </div>
 
           {/* Desktop: Table */}
-          <Card className="hidden md:block">
+          <Card className="hidden md:block shadow-md border-border/50 rounded-2xl overflow-hidden">
             <CardContent className="p-0">
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>Data</TableHead>
-                    <TableHead>Cliente</TableHead>
-                    <TableHead>Orario</TableHead>
-                    <TableHead>Partecipanti</TableHead>
-                    <TableHead>Note</TableHead>
-                    <TableHead className="w-[50px] text-right">Azioni</TableHead>
+                  <TableRow className="bg-muted/50 hover:bg-muted/50">
+                    <TableHead className="font-semibold">Data</TableHead>
+                    <TableHead className="font-semibold">Cliente</TableHead>
+                    <TableHead className="font-semibold">Orario</TableHead>
+                    <TableHead className="font-semibold">Partecipanti</TableHead>
+                    <TableHead className="font-semibold">Note</TableHead>
+                    <TableHead className="w-[50px] text-right font-semibold">Azioni</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {records.map((record) => (
-                    <TableRow key={record.id}>
+                  {records.map((record, index) => (
+                    <TableRow key={record.id} className={index % 2 === 1 ? "bg-muted/20" : ""}>
                       <TableCell className="whitespace-nowrap">
                         {formatDate(record.date)}
                       </TableCell>
@@ -368,7 +376,7 @@ export function RegistroList() {
                         <div className="flex flex-wrap gap-1.5">
                           {record.service_participants.length > 0 ? (
                             record.service_participants.map((p) => (
-                              <Badge key={p.id} variant="secondary">
+                              <Badge key={p.id} variant="secondary" className="rounded-lg text-xs font-normal">
                                 {participantName(p)}
                               </Badge>
                             ))
@@ -392,7 +400,7 @@ export function RegistroList() {
                           size="icon"
                           onClick={() => setDeleteTarget(record)}
                           aria-label="Elimina registrazione"
-                          className="text-destructive"
+                          className="text-destructive rounded-lg"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
