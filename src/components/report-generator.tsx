@@ -33,13 +33,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { AutocompleteInput } from "@/components/ui/autocomplete-input"
 import {
   EmployeeReportPDF,
@@ -49,6 +42,7 @@ import {
 import {
   ClientReportPDF,
   type ClientReportRow,
+  type ClientReportData,
 } from "@/components/pdf/client-report-pdf"
 import { toast } from "@/components/ui/toast"
 
@@ -127,8 +121,8 @@ export function ReportGenerator() {
 
   // Client report state
   const [clientMonth, setClientMonth] = useState(currentMonthLabel())
-  const [selectedClientId, setSelectedClientId] = useState("")
-  const [clientRows, setClientRows] = useState<ClientReportRow[]>([])
+  const [selectedClientIds, setSelectedClientIds] = useState<Set<string>>(new Set())
+  const [clientDataMap, setClientDataMap] = useState<Map<string, ClientReportRow[]>>(new Map())
   const [clientLoaded, setClientLoaded] = useState(false)
 
   const workers: Worker[] = useMemo(() => {
@@ -156,6 +150,15 @@ export function ReportGenerator() {
         value: w.id,
       })),
     [workers]
+  )
+
+  const clientItems = useMemo(
+    () =>
+      clients.map((c) => ({
+        label: c.name,
+        value: c.id,
+      })),
+    [clients]
   )
 
   useEffect(() => {
@@ -188,12 +191,36 @@ export function ReportGenerator() {
     })
   }
 
-  function selectAll() {
+  function selectAllWorkers() {
     setSelectedWorkerIds(new Set(workers.map((w) => w.id)))
   }
 
-  function deselectAll() {
+  function deselectAllWorkers() {
     setSelectedWorkerIds(new Set())
+  }
+
+  function addClient(id: string) {
+    setSelectedClientIds((prev) => {
+      const next = new Set(prev)
+      next.add(id)
+      return next
+    })
+  }
+
+  function removeClient(id: string) {
+    setSelectedClientIds((prev) => {
+      const next = new Set(prev)
+      next.delete(id)
+      return next
+    })
+  }
+
+  function selectAllClients() {
+    setSelectedClientIds(new Set(clients.map((c) => c.id)))
+  }
+
+  function deselectAllClients() {
+    setSelectedClientIds(new Set())
   }
 
   // Load employee data for all selected workers
@@ -210,17 +237,6 @@ export function ReportGenerator() {
       setEmployeeLoaded(false)
       const { start, end } = monthBounds(employeeMonth)
 
-      // Fetch all participants for the selected workers first
-      const empIds: string[] = []
-      const frlIds: string[] = []
-
-      for (const wid of selectedWorkerIds) {
-        const [type, id] = wid.split(":")
-        if (type === "emp") empIds.push(id)
-        else frlIds.push(id)
-      }
-
-      // Fetch service_records for the month period
       const { data: records, error } = await supabase
         .from("service_records")
         .select(
@@ -244,7 +260,6 @@ export function ReportGenerator() {
         return
       }
 
-      // Group records by worker in JS
       const map = new Map<string, EmployeeReportRow[]>()
       const allRecords = (records ?? []) as Array<{
         date: string
@@ -287,21 +302,26 @@ export function ReportGenerator() {
     }
   }, [supabase, selectedWorkerIds, employeeMonth])
 
-  // Load client report when client or month changes
+  // Load client data for all selected clients
   useEffect(() => {
-    if (!selectedClientId) return
+    if (selectedClientIds.size === 0) {
+      setClientDataMap(new Map())
+      setClientLoaded(true)
+      return
+    }
 
     let cancelled = false
 
     const run = async () => {
+      setClientLoaded(false)
       const { start, end } = monthBounds(clientMonth)
 
       const { data, error } = await supabase
         .from("service_records")
         .select(
-          "date, start_time, end_time, observation, service_participants(profile_id, freelancer_id, profiles(full_name), freelancers(name))"
+          "client_id, date, start_time, end_time, observation, clients(name), service_participants(profile_id, freelancer_id, profiles(full_name), freelancers(name))"
         )
-        .eq("client_id", selectedClientId)
+        .in("client_id", Array.from(selectedClientIds))
         .gte("date", start)
         .lte("date", end)
         .order("date", { ascending: true })
@@ -315,18 +335,28 @@ export function ReportGenerator() {
           description: "Impossibile caricare i dati del report",
           type: "error",
         })
-        setClientRows([])
-      } else {
-        const rows = ((data ?? []) as Array<{
-          date: string
-          start_time: string
-          end_time: string
-          observation: string | null
-          service_participants: Array<{
-            profiles: { full_name: string | null } | null
-            freelancers: { name: string } | null
-          }>
-        }>).map((r) => {
+        setClientDataMap(new Map())
+        setClientLoaded(true)
+        return
+      }
+
+      const allRecords = (data ?? []) as Array<{
+        client_id: string
+        date: string
+        start_time: string
+        end_time: string
+        observation: string | null
+        clients: { name: string } | null
+        service_participants: Array<{
+          profiles: { full_name: string | null } | null
+          freelancers: { name: string } | null
+        }>
+      }>
+
+      const map = new Map<string, ClientReportRow[]>()
+      for (const cid of selectedClientIds) {
+        const matchingRecords = allRecords.filter((r) => r.client_id === cid)
+        const rows = matchingRecords.map((r) => {
           const participants = r.service_participants.map((p) => {
             if (p.profiles?.full_name) return p.profiles.full_name
             if (p.freelancers?.name) return p.freelancers.name
@@ -342,8 +372,9 @@ export function ReportGenerator() {
             observation: r.observation,
           }
         })
-        setClientRows(rows)
+        map.set(cid, rows)
       }
+      setClientDataMap(map)
       setClientLoaded(true)
     }
 
@@ -351,10 +382,7 @@ export function ReportGenerator() {
     return () => {
       cancelled = true
     }
-  }, [supabase, selectedClientId, clientMonth])
-
-  const selectedClients = clients.find((c) => c.id === selectedClientId)
-  const clientTotal = clientRows.reduce((sum, r) => sum + r.durationHours, 0)
+  }, [supabase, selectedClientIds, clientMonth])
 
   // Build worker data for PDF
   const workersData: WorkerReportData[] = useMemo(() => {
@@ -372,6 +400,21 @@ export function ReportGenerator() {
       .filter((d): d is WorkerReportData => d !== null)
   }, [selectedWorkerIds, workers, workerDataMap, employeeMonth])
 
+  // Build client data for PDF
+  const clientsData: ClientReportData[] = useMemo(() => {
+    return Array.from(selectedClientIds)
+      .map((cid) => {
+        const client = clients.find((c) => c.id === cid)
+        if (!client) return null
+        return {
+          clientName: client.name,
+          monthLabel: clientMonth,
+          rows: clientDataMap.get(cid) ?? [],
+        }
+      })
+      .filter((d): d is ClientReportData => d !== null)
+  }, [selectedClientIds, clients, clientDataMap, clientMonth])
+
   // Total hours across all selected workers
   const totalAllWorkers = useMemo(() => {
     let total = 0
@@ -381,9 +424,23 @@ export function ReportGenerator() {
     return total
   }, [workerDataMap])
 
+  // Total hours across all selected clients
+  const totalAllClients = useMemo(() => {
+    let total = 0
+    for (const rows of clientDataMap.values()) {
+      total += rows.reduce((sum, r) => sum + r.durationHours, 0)
+    }
+    return total
+  }, [clientDataMap])
+
   const selectedWorkersList = useMemo(
     () => workers.filter((w) => selectedWorkerIds.has(w.id)),
     [workers, selectedWorkerIds]
+  )
+
+  const selectedClientsList = useMemo(
+    () => clients.filter((c) => selectedClientIds.has(c.id)),
+    [clients, selectedClientIds]
   )
 
   return (
@@ -455,7 +512,7 @@ export function ReportGenerator() {
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={selectAll}
+                    onClick={selectAllWorkers}
                     className="rounded-lg text-xs"
                   >
                     <Check className="h-3.5 w-3.5" />
@@ -465,7 +522,7 @@ export function ReportGenerator() {
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={deselectAll}
+                    onClick={deselectAllWorkers}
                     className="rounded-lg text-xs"
                   >
                     Deseleziona Tutti
@@ -615,10 +672,10 @@ export function ReportGenerator() {
             <CardHeader className="pb-4">
               <CardTitle className="text-base">Filtri Report Cliente</CardTitle>
               <CardDescription>
-                Seleziona mese e cliente per generare il report
+                Seleziona mese e clienti per generare il report
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="client-month" className="text-sm font-medium">Mese/Anno</Label>
@@ -633,119 +690,180 @@ export function ReportGenerator() {
                     }}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Cliente</Label>
-                  <Select
-                    items={clients.map((c) => ({
-                      label: c.name,
-                      value: c.id,
-                    }))}
-                    value={selectedClientId || null}
-                    onValueChange={(value) => setSelectedClientId(value ?? "")}
-                  >
-                    <SelectTrigger className="w-full rounded-lg">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {clients.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {c.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium">Clienti</Label>
+                  <span className="text-sm text-muted-foreground">
+                    Selezionati: {selectedClientIds.size} / {clients.length}
+                  </span>
                 </div>
+
+                <AutocompleteInput
+                  items={clientItems}
+                  placeholder="Cerca cliente per nome..."
+                  emptyMessage="Nessun cliente trovato."
+                  clearOnSelect
+                  filterSelected={(item) => !selectedClientIds.has(item.value)}
+                  onSelect={(item) => addClient(item.value)}
+                />
+
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={selectAllClients}
+                    className="rounded-lg text-xs"
+                  >
+                    <Check className="h-3.5 w-3.5" />
+                    Seleziona Tutti
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={deselectAllClients}
+                    className="rounded-lg text-xs"
+                  >
+                    Deseleziona Tutti
+                  </Button>
+                </div>
+
+                {selectedClientsList.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {selectedClientsList.map((c) => (
+                      <Badge
+                        key={c.id}
+                        variant="secondary"
+                        className="gap-1.5 pr-1.5 py-1 rounded-lg text-sm font-normal"
+                      >
+                        <div className="flex h-5 w-5 items-center justify-center rounded-md bg-primary/10">
+                          <Building2 className="h-3 w-3 text-primary" />
+                        </div>
+                        {c.name}
+                        <button
+                          type="button"
+                          onClick={() => removeClient(c.id)}
+                          className="ml-0.5 rounded-full p-0.5 hover:bg-destructive/20 hover:text-destructive transition-colors"
+                          aria-label={`Rimuovi ${c.name}`}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
 
-          {selectedClientId && clientLoaded && selectedClients && (
+          {selectedClientIds.size > 0 && clientLoaded && (
             <Card className="shadow-md border-border/50 rounded-2xl overflow-hidden">
               <CardHeader className="pb-4">
                 <CardTitle className="text-base">Anteprima Report</CardTitle>
                 <CardDescription>
-                  {selectedClients.name} — {clientMonth}
+                  {clientMonth} — {selectedClientIds.size} cliente{(selectedClientIds.size > 1 ? " selezionati" : " selezionato")}
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                {clientRows.length === 0 ? (
-                  <div className="flex flex-col items-center gap-2 py-8 text-center">
-                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted">
-                      <CalendarDays className="h-7 w-7 text-muted-foreground" />
+              <CardContent className="space-y-6">
+                {Array.from(selectedClientIds).map((cid) => {
+                  const client = clients.find((c) => c.id === cid)
+                  if (!client) return null
+                  const rows = clientDataMap.get(cid) ?? []
+                  const total = rows.reduce((s, r) => s + r.durationHours, 0)
+
+                  return (
+                    <div key={cid} className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10">
+                          <Building2 className="h-3.5 w-3.5 text-primary" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold">{client.name}</p>
+                        </div>
+                      </div>
+
+                      {rows.length === 0 ? (
+                        <p className="text-sm text-muted-foreground pl-9">
+                          Nessuna registrazione trovata per il periodo selezionato.
+                        </p>
+                      ) : (
+                        <>
+                          <div className="overflow-x-auto rounded-xl border border-border/50 ml-9">
+                            <Table>
+                              <TableHeader>
+                                <TableRow className="bg-muted/50 hover:bg-muted/50">
+                                  <TableHead className="font-semibold text-xs">Data</TableHead>
+                                  <TableHead className="font-semibold text-xs">Partecipanti</TableHead>
+                                  <TableHead className="font-semibold text-xs">Orario / Durata</TableHead>
+                                  <TableHead className="font-semibold text-xs">Note</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {rows.map((row, i) => (
+                                  <TableRow key={i} className={i % 2 === 1 ? "bg-muted/20" : ""}>
+                                    <TableCell className="text-xs whitespace-nowrap">{row.date}</TableCell>
+                                    <TableCell>
+                                      <div className="flex flex-wrap gap-1.5">
+                                        {row.participants.map((p, j) => (
+                                          <Badge key={j} variant="secondary" className="rounded-lg text-[10px] font-normal">
+                                            {p}
+                                          </Badge>
+                                        ))}
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className="text-xs whitespace-nowrap">
+                                      {row.startTime} - {row.endTime} (
+                                      <span className="font-medium">{row.durationHours.toFixed(2)} ore</span>)
+                                    </TableCell>
+                                    <TableCell className="text-xs max-w-[150px] truncate">
+                                      {row.observation || <span className="text-muted-foreground">—</span>}
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </div>
+                          <p className="text-xs font-semibold text-right ml-9">
+                            Totale: <span className="text-primary">{total.toFixed(2)} ore</span>
+                          </p>
+                        </>
+                      )}
                     </div>
-                    <p className="text-muted-foreground">
-                      Nessun dato trovato per il periodo selezionato.
+                  )
+                })}
+
+                <div className="flex flex-col gap-4 rounded-xl bg-muted/30 p-4 sm:flex-row sm:items-center sm:justify-between border border-border/50">
+                  <div className="space-y-1">
+                    <p className="text-sm font-semibold">
+                      Totale Generale:{" "}
+                      <span className="text-primary">
+                        {totalAllClients.toFixed(2)} ore
+                      </span>
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {clientsData.length} report generati
                     </p>
                   </div>
-                ) : (
-                  <>
-                    <div className="overflow-x-auto rounded-xl border border-border/50">
-                      <Table>
-                        <TableHeader>
-                          <TableRow className="bg-muted/50 hover:bg-muted/50">
-                            <TableHead className="font-semibold">Data</TableHead>
-                            <TableHead className="font-semibold">Partecipanti</TableHead>
-                            <TableHead className="font-semibold">Orario / Durata</TableHead>
-                            <TableHead className="font-semibold">Note</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {clientRows.map((row, i) => (
-                            <TableRow key={i} className={i % 2 === 1 ? "bg-muted/20" : ""}>
-                              <TableCell className="whitespace-nowrap">{row.date}</TableCell>
-                              <TableCell>
-                                <div className="flex flex-wrap gap-1.5">
-                                  {row.participants.map((p, j) => (
-                                    <Badge key={j} variant="secondary" className="rounded-lg text-xs font-normal">
-                                      {p}
-                                    </Badge>
-                                  ))}
-                                </div>
-                              </TableCell>
-                              <TableCell className="whitespace-nowrap">
-                                {row.startTime} - {row.endTime} (
-                                <span className="font-medium">{row.durationHours.toFixed(2)} ore</span>)
-                              </TableCell>
-                              <TableCell className="max-w-[200px] truncate">
-                                {row.observation || (
-                                  <span className="text-xs text-muted-foreground">
-                                    —
-                                  </span>
-                                )}
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-
-                    <div className="flex flex-col gap-4 rounded-xl bg-muted/30 p-4 sm:flex-row sm:items-center sm:justify-between border border-border/50">
-                      <p className="text-sm font-semibold">
-                        Totale Ore Servizio nel Mese:{" "}
-                        <span className="text-primary">
-                          {clientTotal.toFixed(2)} ore
-                        </span>
-                      </p>
-                      <PDFDownloadLink
-                        document={
-                          <ClientReportPDF
-                            clientName={selectedClients.name}
-                            monthLabel={clientMonth}
-                            rows={clientRows}
-                          />
-                        }
-                        fileName={`report-cliente-${selectedClients.name.replace(/\s+/g, "-").toLowerCase()}-${clientMonth.replace(/\s+/g, "-").toLowerCase()}.pdf`}
-                      >
-                        {({ loading }) => (
-                          <Button disabled={loading} className="rounded-xl shadow-sm">
-                            <Download className="h-4 w-4" />
-                            {loading ? "Generazione PDF..." : "Scarica PDF"}
-                          </Button>
-                        )}
-                      </PDFDownloadLink>
-                    </div>
-                  </>
-                )}
+                  <PDFDownloadLink
+                    document={
+                      <ClientReportPDF
+                        clientsData={clientsData}
+                        monthLabel={clientMonth}
+                      />
+                    }
+                    fileName={`report-mensile-clienti-cumulativo-${clientMonth.replace(/\s+/g, "-").toLowerCase()}.pdf`}
+                  >
+                    {({ loading }) => (
+                      <Button disabled={loading} className="rounded-xl shadow-sm">
+                        <Download className="h-4 w-4" />
+                        {loading ? "Generazione PDF..." : "Scarica Tutti i Report (PDF)"}
+                      </Button>
+                    )}
+                  </PDFDownloadLink>
+                </div>
               </CardContent>
             </Card>
           )}
