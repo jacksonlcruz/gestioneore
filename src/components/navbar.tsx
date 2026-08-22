@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
-import { Clock, LogOut, Menu, X } from "lucide-react"
+import { Clock, LogOut, Menu, User, X } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
@@ -16,6 +16,7 @@ const navLinks = [
   { href: "/report", label: "Report" },
   { href: "/gestione", label: "Gestione" },
   { href: "/admin", label: "Area Admin" },
+  { href: "/profilo", label: "Profilo" },
 ]
 
 const publicRoute = "/login"
