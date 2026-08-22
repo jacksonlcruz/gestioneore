@@ -94,6 +94,8 @@ export function RegistroList() {
   const [records, setRecords] = useState<ServiceRecord[]>([])
   const [clients, setClients] = useState<Client[]>([])
   const [loaded, setLoaded] = useState(false)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [isAdmin, setIsAdmin] = useState(false)
 
   const [filterClientId, setFilterClientId] = useState<string>("")
   const [filterStartDate, setFilterStartDate] = useState<string>("")
@@ -101,6 +103,30 @@ export function RegistroList() {
 
   const [deleteTarget, setDeleteTarget] = useState<ServiceRecord | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+
+  // Load current user and role
+  useEffect(() => {
+    let cancelled = false
+    const loadUser = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (cancelled || !user) return
+      setCurrentUserId(user.id)
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single()
+      if (!cancelled && profile) {
+        setIsAdmin(profile.role === "admin")
+      }
+    }
+    loadUser()
+    return () => {
+      cancelled = true
+    }
+  }, [supabase])
 
   // Load clients once on mount
   useEffect(() => {
@@ -190,6 +216,14 @@ export function RegistroList() {
     }
     setIsDeleting(false)
     setDeleteTarget(null)
+  }
+
+  function canDelete(record: ServiceRecord): boolean {
+    if (isAdmin) return true
+    if (!currentUserId) return false
+    return record.service_participants.some(
+      (p) => p.worker_type === "employee" && p.profile_id === currentUserId
+    )
   }
 
   const hasFilters = filterClientId || filterStartDate || filterEndDate
@@ -301,15 +335,17 @@ export function RegistroList() {
                         {formatDate(record.date)}
                       </div>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setDeleteTarget(record)}
-                      aria-label="Elimina registrazione"
-                      className="text-destructive rounded-lg min-h-[44px] min-w-[44px]"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    {canDelete(record) && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setDeleteTarget(record)}
+                        aria-label="Elimina registrazione"
+                        className="text-destructive rounded-lg min-h-[44px] min-w-[44px]"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-2 rounded-lg bg-muted/40 px-3 py-2">
@@ -395,15 +431,17 @@ export function RegistroList() {
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setDeleteTarget(record)}
-                          aria-label="Elimina registrazione"
-                          className="text-destructive rounded-lg"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        {canDelete(record) && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setDeleteTarget(record)}
+                            aria-label="Elimina registrazione"
+                            className="text-destructive rounded-lg"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
