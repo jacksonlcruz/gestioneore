@@ -27,6 +27,7 @@ export function Navbar() {
   const [isOpen, setIsOpen] = useState(false)
   const [userName, setUserName] = useState<string | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     const loadUser = async () => {
@@ -45,23 +46,27 @@ export function Navbar() {
           setIsAdmin(profile.role === "admin")
         }
       }
+      setIsLoading(false)
     }
     loadUser()
   }, [])
+
+  // Enquanto carrega, não mostrar links admin
+  const filteredLinks = isLoading
+    ? navLinks.filter((l) => l.href !== "/gestione" && l.href !== "/admin")
+    : isAdmin
+      ? navLinks
+      : navLinks.filter(
+          (l) =>
+            l.href !== "/gestione" &&
+            l.href !== "/admin"
+        )
 
   async function handleLogout() {
     const supabase = createClient()
     await supabase.auth.signOut()
     router.push("/login")
   }
-
-  const filteredLinks = isAdmin
-    ? navLinks
-    : navLinks.filter(
-        (l) =>
-          l.href !== "/gestione" &&
-          l.href !== "/admin"
-      )
 
   // Não mostrar navbar na página de login
   if (pathname === publicRoute) return null
