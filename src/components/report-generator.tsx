@@ -129,6 +129,81 @@ function formatPeriodLabel(
   }
 }
 
+function mergeObservations(observations: Array<string | null>): string {
+  const unique = Array.from(
+    new Set(
+      observations
+        .filter((o): o is string => !!o && o.trim() !== "" && o.trim() !== "-")
+        .map((o) => o.trim())
+    )
+  )
+  return unique.join(" / ")
+}
+
+function groupClientRecords(
+  records: Array<{
+    client_id: string
+    date: string
+    start_time: string
+    end_time: string
+    observation: string | null
+    service_participants: Array<{
+      profiles: { full_name: string | null } | null
+      freelancers: { name: string } | null
+    }>
+  }>
+): ClientReportRow[] {
+  const groups = new Map<
+    string,
+    {
+      date: string
+      start_time: string
+      end_time: string
+      observations: Array<string | null>
+      participants: string[]
+    }
+  >()
+
+  for (const r of records) {
+    const key = `${r.date}|${r.start_time}|${r.end_time}`
+    const existing = groups.get(key)
+    const participantNames = r.service_participants.map((p) => {
+      if (p.profiles?.full_name) return p.profiles.full_name
+      if (p.freelancers?.name) return p.freelancers.name
+      return "Sconosciuto"
+    })
+
+    if (existing) {
+      existing.observations.push(r.observation)
+      for (const name of participantNames) {
+        if (!existing.participants.includes(name)) {
+          existing.participants.push(name)
+        }
+      }
+    } else {
+      groups.set(key, {
+        date: r.date,
+        start_time: r.start_time,
+        end_time: r.end_time,
+        observations: [r.observation],
+        participants: participantNames,
+      })
+    }
+  }
+
+  return Array.from(groups.values()).map((g) => {
+    const shiftHours = toDurationHours(g.start_time, g.end_time)
+    return {
+      date: formatDateDDMMYYYY(g.date),
+      participants: g.participants,
+      startTime: formatTime(g.start_time),
+      endTime: formatTime(g.end_time),
+      durationHours: shiftHours * g.participants.length,
+      observation: mergeObservations(g.observations) || null,
+    }
+  })
+}
+
 function getPeriodBounds(
   type: PeriodType,
   monthLabel: string,
@@ -440,22 +515,7 @@ export function ReportGenerator() {
       const map = new Map<string, ClientReportRow[]>()
       for (const cid of selectedClientIds) {
         const matchingRecords = allRecords.filter((r) => r.client_id === cid)
-        const rows = matchingRecords.map((r) => {
-          const participants = r.service_participants.map((p) => {
-            if (p.profiles?.full_name) return p.profiles.full_name
-            if (p.freelancers?.name) return p.freelancers.name
-            return "Sconosciuto"
-          })
-          const shiftHours = toDurationHours(r.start_time, r.end_time)
-          return {
-            date: formatDateDDMMYYYY(r.date),
-            participants,
-            startTime: formatTime(r.start_time),
-            endTime: formatTime(r.end_time),
-            durationHours: shiftHours * participants.length,
-            observation: r.observation,
-          }
-        })
+        const rows = groupClientRecords(matchingRecords)
         map.set(cid, rows)
       }
       setClientDataMap(map)
