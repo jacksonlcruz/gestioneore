@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { PDFDownloadLink } from "@react-pdf/renderer"
-import { Building2, Check, Download, User, X } from "lucide-react"
+import { Building2, Check, Download, Pencil, RotateCcw, User, X } from "lucide-react"
 
 import { createClient } from "@/lib/supabase/client"
 import type { Database } from "@/types/database.types"
@@ -10,6 +10,14 @@ import type { Database } from "@/types/database.types"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import {
   Card,
@@ -247,6 +255,20 @@ export function ReportGenerator() {
   const [selectedClientIds, setSelectedClientIds] = useState<Set<string>>(new Set())
   const [clientDataMap, setClientDataMap] = useState<Map<string, ClientReportRow[]>>(new Map())
   const [clientLoaded, setClientLoaded] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
+
+  // Editable client report state (local, no Supabase)
+  const [editableClientDataMap, setEditableClientDataMap] = useState<Map<string, ClientReportRow[]> | null>(null)
+  const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [editDialogClientId, setEditDialogClientId] = useState<string | null>(null)
+  const [editDialogRowIndex, setEditDialogRowIndex] = useState<number | null>(null)
+  const [editForm, setEditForm] = useState({
+    startTime: "",
+    endTime: "",
+    observation: "",
+    durationHours: 0,
+  })
+  const [originalClientDataMap, setOriginalClientDataMap] = useState<Map<string, ClientReportRow[]> | null>(null)
 
   const workers: Worker[] = useMemo(() => {
     const employeeWorkers = profiles
@@ -455,6 +477,25 @@ export function ReportGenerator() {
     }
   }, [supabase, selectedWorkerIds, employeePeriodType, employeeMonth, employeeDate, employeeStartDate, employeeEndDate])
 
+  // Load current user role
+  useEffect(() => {
+    const loadUser = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) return
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single()
+      if (profile) {
+        setIsAdmin(profile.role === "admin")
+      }
+    }
+    loadUser()
+  }, [supabase])
+
   // Load client data for all selected clients
   useEffect(() => {
     if (selectedClientIds.size === 0) {
@@ -519,6 +560,8 @@ export function ReportGenerator() {
         map.set(cid, rows)
       }
       setClientDataMap(map)
+      setOriginalClientDataMap(new Map(map))
+      setEditableClientDataMap(null)
       setClientLoaded(true)
     }
 
@@ -544,7 +587,10 @@ export function ReportGenerator() {
       .filter((d): d is WorkerReportData => d !== null)
   }, [selectedWorkerIds, workers, workerDataMap, employeePeriodLabel])
 
-  // Build client data for PDF
+  // Use editable data if available, otherwise use original data
+  const displayClientDataMap = editableClientDataMap ?? clientDataMap
+
+  // Build client data for PDF (use displayClientDataMap to reflect edits)
   const clientsData: ClientReportData[] = useMemo(() => {
     return Array.from(selectedClientIds)
       .map((cid) => {
@@ -553,11 +599,11 @@ export function ReportGenerator() {
         return {
           clientName: client.name,
           periodLabel: clientPeriodLabel,
-          rows: clientDataMap.get(cid) ?? [],
+          rows: displayClientDataMap.get(cid) ?? [],
         }
       })
       .filter((d): d is ClientReportData => d !== null)
-  }, [selectedClientIds, clients, clientDataMap, clientPeriodLabel])
+  }, [selectedClientIds, clients, displayClientDataMap, clientPeriodLabel])
 
   // Total hours across all selected workers
   const totalAllWorkers = useMemo(() => {
@@ -586,6 +632,77 @@ export function ReportGenerator() {
     () => clients.filter((c) => selectedClientIds.has(c.id)),
     [clients, selectedClientIds]
   )
+
+  function openEditDialog(cid: string, rowIndex: number) {
+    const rows = displayClientDataMap.get(cid)
+    if (!rows || rowIndex < 0 || rowIndex >= rows.length) return
+    const row = rows[rowIndex]
+    setEditDialogClientId(cid)
+    setEditDialogRowIndex(rowIndex)
+    setEditForm({
+      startTime: row.startTime,
+      endTime: row.endTime,
+      observation: row.observation ?? "",
+      durationHours: row.durationHours,
+    })
+    setEditDialogOpen(true)
+  }
+
+  // Recalcular Ore Totali quando startTime ou endTime mudam no modal
+  const editDialogParticipantsCount = useMemo(() => {
+    if (!editDialogClientId || editDialogRowIndex === null) return 1
+    const rows = displayClientDataMap.get(editDialogClientId)
+    if (!rows || editDialogRowIndex < 0 || editDialogRowIndex >= rows.length) return 1
+    return rows[editDialogRowIndex].participants.length
+  }, [editDialogClientId, editDialogRowIndex, displayClientDataMap])
+
+  useEffect(() => {
+    if (!editForm.startTime || !editForm.endTime) return
+    const [sh, sm] = editForm.startTime.split(":").map(Number)
+    const [eh, em] = editForm.endTime.split(":").map(Number)
+    if (isNaN(sh) || isNaN(sm) || isNaN(eh) || isNaN(em)) return
+
+    let diffMinutes = eh * 60 + em - (sh * 60 + sm)
+    if (diffMinutes < 0) {
+      diffMinutes += 24 * 60 // virada de turno
+    }
+    if (diffMinutes <= 0) return
+
+    const durationHours = diffMinutes / 60
+    const total = durationHours * editDialogParticipantsCount
+    setEditForm((prev) => ({
+      ...prev,
+      durationHours: Math.round(total * 100) / 100,
+    }))
+  }, [editForm.startTime, editForm.endTime, editDialogParticipantsCount])
+
+  function handleSaveEdit() {
+    if (!editDialogClientId || editDialogRowIndex === null) return
+
+    const currentMap = editableClientDataMap ?? clientDataMap
+    const newMap = new Map(currentMap)
+    const rows = [...(newMap.get(editDialogClientId) ?? [])]
+    const row = { ...rows[editDialogRowIndex] }
+
+    row.startTime = editForm.startTime
+    row.endTime = editForm.endTime
+    row.observation = editForm.observation || null
+    row.durationHours = editForm.durationHours
+
+    rows[editDialogRowIndex] = row
+    newMap.set(editDialogClientId, rows)
+    setEditableClientDataMap(newMap)
+    setEditDialogOpen(false)
+    setEditDialogClientId(null)
+    setEditDialogRowIndex(null)
+  }
+
+  function handleResetOriginal() {
+    if (originalClientDataMap) {
+      setClientDataMap(new Map(originalClientDataMap))
+    }
+    setEditableClientDataMap(null)
+  }
 
   return (
     <div className="mx-auto w-full max-w-5xl space-y-6">
@@ -1045,7 +1162,7 @@ export function ReportGenerator() {
                 {Array.from(selectedClientIds).map((cid) => {
                   const client = clients.find((c) => c.id === cid)
                   if (!client) return null
-                  const rows = clientDataMap.get(cid) ?? []
+                  const rows = displayClientDataMap.get(cid) ?? []
                   const total = rows.reduce((s, r) => s + r.durationHours, 0)
 
                   return (
@@ -1073,6 +1190,7 @@ export function ReportGenerator() {
                                   <TableHead className="font-semibold text-xs">Partecipanti</TableHead>
                                   <TableHead className="font-semibold text-xs">Orario / Durata</TableHead>
                                   <TableHead className="font-semibold text-xs">Note</TableHead>
+                                  {isAdmin && <TableHead className="w-[50px] text-right font-semibold text-xs">Azioni</TableHead>}
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
@@ -1095,6 +1213,19 @@ export function ReportGenerator() {
                                     <TableCell className="text-xs max-w-[150px] truncate">
                                       {row.observation || <span className="text-muted-foreground">—</span>}
                                     </TableCell>
+                                    {isAdmin && (
+                                      <TableCell className="text-right">
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          onClick={() => openEditDialog(cid, i)}
+                                          aria-label="Modifica per PDF"
+                                          className="rounded-lg"
+                                        >
+                                          <Pencil className="h-3.5 w-3.5" />
+                                        </Button>
+                                      </TableCell>
+                                    )}
                                   </TableRow>
                                 ))}
                               </TableBody>
@@ -1121,26 +1252,113 @@ export function ReportGenerator() {
                       {clientsData.length} report generati
                     </p>
                   </div>
-                  <PDFDownloadLink
-                    document={
-                      <ClientReportPDF
-                        clientsData={clientsData}
-                        periodLabel={clientPeriodLabel}
-                      />
-                    }
-                    fileName={`report-${clientPeriodType}-clienti-cumulativo-${clientPeriodLabel.replace(/\s+/g, "-").toLowerCase()}.pdf`}
-                  >
-                    {({ loading }) => (
-                      <Button disabled={loading} className="rounded-xl shadow-sm">
-                        <Download className="h-4 w-4" />
-                        {loading ? "Generazione PDF..." : "Scarica Tutti i Report (PDF)"}
+                  <div className="flex flex-wrap gap-2">
+                    {editableClientDataMap && isAdmin && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleResetOriginal}
+                        className="rounded-lg"
+                      >
+                        <RotateCcw className="h-4 w-4" />
+                        Ripristina dati originali
                       </Button>
                     )}
-                  </PDFDownloadLink>
+                    <PDFDownloadLink
+                      document={
+                        <ClientReportPDF
+                          clientsData={clientsData}
+                          periodLabel={clientPeriodLabel}
+                        />
+                      }
+                      fileName={`report-${clientPeriodType}-clienti-cumulativo-${clientPeriodLabel.replace(/\s+/g, "-").toLowerCase()}.pdf`}
+                    >
+                      {({ loading }) => (
+                        <Button disabled={loading} className="rounded-xl shadow-sm">
+                          <Download className="h-4 w-4" />
+                          {loading ? "Generazione PDF..." : "Scarica Tutti i Report (PDF)"}
+                        </Button>
+                      )}
+                    </PDFDownloadLink>
+                  </div>
                 </div>
               </CardContent>
             </Card>
           )}
+
+          {/* Dialog di modifica temporanea per Admin */}
+          <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Modifica per PDF</DialogTitle>
+                <DialogDescription>
+                  Le modifiche sono temporanee e non verranno salvate nel database.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-start-time" className="text-sm font-medium">Ora Inizio</Label>
+                    <Input
+                      id="edit-start-time"
+                      type="time"
+                      value={editForm.startTime}
+                      onChange={(e) => setEditForm((prev) => ({ ...prev, startTime: e.target.value }))}
+                      className="rounded-lg"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-end-time" className="text-sm font-medium">Ora Fine</Label>
+                    <Input
+                      id="edit-end-time"
+                      type="time"
+                      value={editForm.endTime}
+                      onChange={(e) => setEditForm((prev) => ({ ...prev, endTime: e.target.value }))}
+                      className="rounded-lg"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-duration" className="text-sm font-medium">Ore Totali della riga</Label>
+                  <Input
+                    id="edit-duration"
+                    type="number"
+                    step="0.01"
+                    min={0}
+                    value={editForm.durationHours}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, durationHours: Number(e.target.value) }))}
+                    className="rounded-lg"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-observation" className="text-sm font-medium">Note / Ubicazione</Label>
+                  <Input
+                    id="edit-observation"
+                    type="text"
+                    value={editForm.observation}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, observation: e.target.value }))}
+                    placeholder="Note o ubicazione del servizio"
+                    className="rounded-lg"
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setEditDialogOpen(false)}
+                  className="rounded-lg"
+                >
+                  Annulla
+                </Button>
+                <Button
+                  onClick={handleSaveEdit}
+                  className="rounded-lg"
+                >
+                  Salva Modifiche
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </TabsContent>
       </Tabs>
     </div>
