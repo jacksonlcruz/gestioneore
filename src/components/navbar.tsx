@@ -27,6 +27,7 @@ export function Navbar() {
   const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
   const [userName, setUserName] = useState<string | null>(null)
+  const [userRole, setUserRole] = useState<string | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
 
@@ -44,6 +45,7 @@ export function Navbar() {
           .single()
         if (profile) {
           setUserName(profile.full_name ?? user.email ?? null)
+          setUserRole(profile.role)
           setIsAdmin(profile.role === "admin")
         }
       }
@@ -104,8 +106,17 @@ export function Navbar() {
             </Link>
           ))}
           {userName && (
-            <span className="mx-2 px-2 py-1 text-sm text-muted-foreground rounded-md bg-muted/50">
+            <span className="mx-2 flex items-center gap-1.5 px-2 py-1 text-sm text-muted-foreground rounded-md bg-muted/50">
               {userName}
+              {userRole && (
+                <span className={`inline-flex h-4 items-center rounded-full px-1.5 text-[10px] font-semibold uppercase tracking-wide ${
+                  userRole === "admin"
+                    ? "bg-purple-100 text-purple-800"
+                    : "bg-slate-100 text-slate-700"
+                }`}>
+                  {userRole === "admin" ? "Admin" : "Dip."}
+                </span>
+              )}
             </span>
           )}
           <Button variant="ghost" size="icon" onClick={handleLogout} aria-label="Esci" className="rounded-lg min-h-[44px] min-w-[44px]">
@@ -149,8 +160,17 @@ export function Navbar() {
           </div>
           {userName && (
             <div className="mt-3 border-t border-border/40 pt-3">
-              <p className="px-3 py-2 text-sm text-muted-foreground rounded-md bg-muted/50">
+              <p className="flex items-center gap-1.5 px-3 py-2 text-sm text-muted-foreground rounded-md bg-muted/50">
                 {userName}
+                {userRole && (
+                  <span className={`inline-flex h-4 items-center rounded-full px-1.5 text-[10px] font-semibold uppercase tracking-wide ${
+                    userRole === "admin"
+                      ? "bg-purple-100 text-purple-800"
+                      : "bg-slate-100 text-slate-700"
+                  }`}>
+                    {userRole === "admin" ? "Admin" : "Dip."}
+                  </span>
+                )}
               </p>
             </div>
           )}

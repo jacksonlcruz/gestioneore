@@ -19,6 +19,19 @@ const badgeVariants = cva(
         ghost:
           "hover:bg-muted hover:text-muted-foreground dark:hover:bg-muted/50",
         link: "text-primary underline-offset-4 hover:underline",
+        // Novas variantes de cores
+        success:
+          "bg-emerald-100 text-emerald-800 border-emerald-200 [a]:hover:bg-emerald-200",
+        error:
+          "bg-rose-100 text-rose-800 border-rose-200 [a]:hover:bg-rose-200",
+        admin:
+          "bg-purple-100 text-purple-800 border-purple-200 [a]:hover:bg-purple-200",
+        employee:
+          "bg-slate-100 text-slate-700 border-slate-200 [a]:hover:bg-slate-200",
+        team:
+          "bg-blue-50 text-blue-700 border-blue-200 [a]:hover:bg-blue-100",
+        freelancer:
+          "bg-amber-50 text-amber-800 border-amber-200 [a]:hover:bg-amber-100",
       },
     },
     defaultVariants: {
