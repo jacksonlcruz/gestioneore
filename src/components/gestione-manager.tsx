@@ -470,12 +470,12 @@ export function GestioneManager() {
                           {profile.email || "-"}
                         </TableCell>
                         <TableCell>
-                          <Badge variant={profile.role === "admin" ? "default" : "secondary"}>
+                          <Badge variant={profile.role === "admin" ? "admin" : "employee"}>
                             {profile.role === "admin" ? "Admin" : "Dipendente"}
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <Badge variant={(profile.is_active ?? true) ? "default" : "destructive"} className="gap-1">
+                          <Badge variant={(profile.is_active ?? true) ? "success" : "error"} className="gap-1">
                             {(profile.is_active ?? true) ? (
                               <><UserCheck className="h-3 w-3" /> Attivo</>
                             ) : (

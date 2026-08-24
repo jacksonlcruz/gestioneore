@@ -455,7 +455,11 @@ export function RegistroList() {
                   {record.service_participants.length > 0 && (
                     <div className="flex flex-wrap gap-1.5">
                       {record.service_participants.map((p) => (
-                        <Badge key={p.id} variant="secondary" className="rounded-lg text-xs font-normal">
+                        <Badge
+                          key={p.id}
+                          variant={p.worker_type === "employee" ? "team" : "freelancer"}
+                          className="rounded-lg text-xs font-normal"
+                        >
                           {participantName(p)}
                         </Badge>
                       ))}
@@ -506,7 +510,11 @@ export function RegistroList() {
                         <div className="flex flex-wrap gap-1.5">
                           {record.service_participants.length > 0 ? (
                             record.service_participants.map((p) => (
-                              <Badge key={p.id} variant="secondary" className="rounded-lg text-xs font-normal">
+                              <Badge
+                                key={p.id}
+                                variant={p.worker_type === "employee" ? "team" : "freelancer"}
+                                className="rounded-lg text-xs font-normal"
+                              >
                                 {participantName(p)}
                               </Badge>
                             ))

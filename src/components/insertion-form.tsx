@@ -478,7 +478,7 @@ export function InsertionForm() {
                       {selectedEmployees.map((emp) => (
                         <Badge
                           key={emp.value}
-                          variant="secondary"
+                          variant="team"
                           className="gap-1.5 pr-1.5 py-1 rounded-lg text-sm font-normal"
                         >
                           <div className="flex h-5 w-5 items-center justify-center rounded-md bg-primary/10">
@@ -531,7 +531,7 @@ export function InsertionForm() {
                       {selectedFreelancers.map((frl) => (
                         <Badge
                           key={frl.value}
-                          variant="secondary"
+                          variant="freelancer"
                           className="gap-1.5 pr-1.5 py-1 rounded-lg text-sm font-normal"
                         >
                           <div className="flex h-5 w-5 items-center justify-center rounded-md bg-primary/10">
