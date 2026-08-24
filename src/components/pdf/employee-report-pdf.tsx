@@ -18,13 +18,13 @@ export type EmployeeReportRow = {
 export type WorkerReportData = {
   workerName: string
   workerType: "employee" | "freelancer"
-  monthLabel: string
+  periodLabel: string
   rows: EmployeeReportRow[]
 }
 
 type EmployeeReportPDFProps = {
   workersData: WorkerReportData[]
-  monthLabel: string
+  periodLabel: string
 }
 
 const styles = StyleSheet.create({
@@ -86,6 +86,22 @@ const styles = StyleSheet.create({
   },
 })
 
+function formatDuration(totalDecimal: number): string {
+  let hours = Math.floor(totalDecimal)
+  let minutes = Math.round((totalDecimal - hours) * 60)
+
+  // Ajustar si los minutos llegan a 60
+  if (minutes === 60) {
+    hours += 1
+    minutes = 0
+  }
+
+  const decimalFormatted = totalDecimal.toFixed(2).replace(".", ",")
+  const clockFormatted = minutes === 0 ? `${hours}h` : `${hours}h ${minutes}m`
+
+  return `${decimalFormatted} ore (${clockFormatted})`
+}
+
 function WorkerPage({ data }: { data: WorkerReportData }) {
   const isFreelancer = data.workerType === "freelancer"
   const totalHours = data.rows.reduce(
@@ -106,7 +122,7 @@ function WorkerPage({ data }: { data: WorkerReportData }) {
             ? `Collaboratore: ${data.workerName}`
             : `Dipendente: ${data.workerName}`}
         </Text>
-        <Text style={styles.meta}>Mese/Anno: {data.monthLabel}</Text>
+        <Text style={styles.meta}>{data.periodLabel}</Text>
       </View>
 
       {data.rows.length === 0 ? (
@@ -118,9 +134,9 @@ function WorkerPage({ data }: { data: WorkerReportData }) {
           <View style={styles.tableHeader}>
             <Text style={styles.colDate}>Data</Text>
             <Text style={styles.colClient}>Cliente</Text>
-            <Text style={styles.colTime}>Orario (Inizio - Fine)</Text>
+            <Text style={styles.colTime}>Orario / Durata</Text>
             <Text style={styles.colDuration}>Durata (ore)</Text>
-            <Text style={styles.colNote}>Note/Ubicazione</Text>
+            <Text style={styles.colNote}>Note / Ubicazione</Text>
           </View>
 
           {data.rows.map((row, index) => (
@@ -136,7 +152,7 @@ function WorkerPage({ data }: { data: WorkerReportData }) {
           ))}
 
           <Text style={styles.footer}>
-            Totale Ore Lavorate nel Mese: {totalHours.toFixed(2)} ore
+            Totale Ore Lavorate nel Periodo: {formatDuration(totalHours)}
           </Text>
         </>
       )}
@@ -146,7 +162,7 @@ function WorkerPage({ data }: { data: WorkerReportData }) {
 
 export function EmployeeReportPDF({
   workersData,
-  monthLabel: _monthLabel,
+  periodLabel,
 }: EmployeeReportPDFProps) {
   return (
     <Document>

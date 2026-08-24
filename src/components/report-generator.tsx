@@ -2,12 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { PDFDownloadLink } from "@react-pdf/renderer"
-import { Building2, CalendarDays, Check, Download, User, X } from "lucide-react"
+import { Building2, Check, Download, User, X } from "lucide-react"
 
 import { createClient } from "@/lib/supabase/client"
 import type { Database } from "@/types/database.types"
 
-import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -56,6 +55,8 @@ type Worker = {
   type: "employee" | "freelancer"
 }
 
+type PeriodType = "mensile" | "giornaliero" | "personalizzato"
+
 const MONTHS_IT = [
   "Gennaio",
   "Febbraio",
@@ -74,6 +75,11 @@ const MONTHS_IT = [
 function currentMonthLabel(): string {
   const now = new Date()
   return `${MONTHS_IT[now.getMonth()]} ${now.getFullYear()}`
+}
+
+function currentDateISO(): string {
+  const now = new Date()
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`
 }
 
 function parseMonthLabel(label: string): { month: number; year: number } {
@@ -106,6 +112,40 @@ function formatDateDDMMYYYY(isoDate: string): string {
   return `${day}/${month}/${year}`
 }
 
+function formatPeriodLabel(
+  type: PeriodType,
+  monthLabel: string,
+  date: string,
+  startDate: string,
+  endDate: string
+): string {
+  switch (type) {
+    case "mensile":
+      return `Mese: ${monthLabel}`
+    case "giornaliero":
+      return `Data: ${formatDateDDMMYYYY(date)}`
+    case "personalizzato":
+      return `Periodo: ${formatDateDDMMYYYY(startDate)} - ${formatDateDDMMYYYY(endDate)}`
+  }
+}
+
+function getPeriodBounds(
+  type: PeriodType,
+  monthLabel: string,
+  singleDate: string,
+  startDate: string,
+  endDate: string
+): { start: string; end: string } {
+  switch (type) {
+    case "mensile":
+      return monthBounds(monthLabel)
+    case "giornaliero":
+      return { start: singleDate, end: singleDate }
+    case "personalizzato":
+      return { start: startDate, end: endDate }
+  }
+}
+
 export function ReportGenerator() {
   const supabase = useMemo(() => createClient(), [])
 
@@ -114,13 +154,21 @@ export function ReportGenerator() {
   const [freelancers, setFreelancers] = useState<Freelancer[]>([])
 
   // Employee report state
+  const [employeePeriodType, setEmployeePeriodType] = useState<PeriodType>("mensile")
   const [employeeMonth, setEmployeeMonth] = useState(currentMonthLabel())
+  const [employeeDate, setEmployeeDate] = useState(currentDateISO())
+  const [employeeStartDate, setEmployeeStartDate] = useState(currentDateISO())
+  const [employeeEndDate, setEmployeeEndDate] = useState(currentDateISO())
   const [selectedWorkerIds, setSelectedWorkerIds] = useState<Set<string>>(new Set())
   const [workerDataMap, setWorkerDataMap] = useState<Map<string, EmployeeReportRow[]>>(new Map())
   const [employeeLoaded, setEmployeeLoaded] = useState(false)
 
   // Client report state
+  const [clientPeriodType, setClientPeriodType] = useState<PeriodType>("mensile")
   const [clientMonth, setClientMonth] = useState(currentMonthLabel())
+  const [clientDate, setClientDate] = useState(currentDateISO())
+  const [clientStartDate, setClientStartDate] = useState(currentDateISO())
+  const [clientEndDate, setClientEndDate] = useState(currentDateISO())
   const [selectedClientIds, setSelectedClientIds] = useState<Set<string>>(new Set())
   const [clientDataMap, setClientDataMap] = useState<Map<string, ClientReportRow[]>>(new Map())
   const [clientLoaded, setClientLoaded] = useState(false)
@@ -223,6 +271,30 @@ export function ReportGenerator() {
     setSelectedClientIds(new Set())
   }
 
+  const employeePeriodLabel = formatPeriodLabel(
+    employeePeriodType,
+    employeeMonth,
+    employeeDate,
+    employeeStartDate,
+    employeeEndDate
+  )
+
+  const clientPeriodLabel = formatPeriodLabel(
+    clientPeriodType,
+    clientMonth,
+    clientDate,
+    clientStartDate,
+    clientEndDate
+  )
+
+  const employeeDateInvalid =
+    employeePeriodType === "personalizzato" &&
+    employeeEndDate < employeeStartDate
+
+  const clientDateInvalid =
+    clientPeriodType === "personalizzato" &&
+    clientEndDate < clientStartDate
+
   // Load employee data for all selected workers
   useEffect(() => {
     if (selectedWorkerIds.size === 0) {
@@ -235,7 +307,13 @@ export function ReportGenerator() {
 
     const run = async () => {
       setEmployeeLoaded(false)
-      const { start, end } = monthBounds(employeeMonth)
+      const { start, end } = getPeriodBounds(
+        employeePeriodType,
+        employeeMonth,
+        employeeDate,
+        employeeStartDate,
+        employeeEndDate
+      )
 
       const { data: records, error } = await supabase
         .from("service_records")
@@ -300,7 +378,7 @@ export function ReportGenerator() {
     return () => {
       cancelled = true
     }
-  }, [supabase, selectedWorkerIds, employeeMonth])
+  }, [supabase, selectedWorkerIds, employeePeriodType, employeeMonth, employeeDate, employeeStartDate, employeeEndDate])
 
   // Load client data for all selected clients
   useEffect(() => {
@@ -314,7 +392,13 @@ export function ReportGenerator() {
 
     const run = async () => {
       setClientLoaded(false)
-      const { start, end } = monthBounds(clientMonth)
+      const { start, end } = getPeriodBounds(
+        clientPeriodType,
+        clientMonth,
+        clientDate,
+        clientStartDate,
+        clientEndDate
+      )
 
       const { data, error } = await supabase
         .from("service_records")
@@ -382,7 +466,7 @@ export function ReportGenerator() {
     return () => {
       cancelled = true
     }
-  }, [supabase, selectedClientIds, clientMonth])
+  }, [supabase, selectedClientIds, clientPeriodType, clientMonth, clientDate, clientStartDate, clientEndDate])
 
   // Build worker data for PDF
   const workersData: WorkerReportData[] = useMemo(() => {
@@ -393,12 +477,12 @@ export function ReportGenerator() {
         return {
           workerName: worker.name,
           workerType: worker.type,
-          monthLabel: employeeMonth,
+          periodLabel: employeePeriodLabel,
           rows: workerDataMap.get(wid) ?? [],
         }
       })
       .filter((d): d is WorkerReportData => d !== null)
-  }, [selectedWorkerIds, workers, workerDataMap, employeeMonth])
+  }, [selectedWorkerIds, workers, workerDataMap, employeePeriodLabel])
 
   // Build client data for PDF
   const clientsData: ClientReportData[] = useMemo(() => {
@@ -408,12 +492,12 @@ export function ReportGenerator() {
         if (!client) return null
         return {
           clientName: client.name,
-          monthLabel: clientMonth,
+          periodLabel: clientPeriodLabel,
           rows: clientDataMap.get(cid) ?? [],
         }
       })
       .filter((d): d is ClientReportData => d !== null)
-  }, [selectedClientIds, clients, clientDataMap, clientMonth])
+  }, [selectedClientIds, clients, clientDataMap, clientPeriodLabel])
 
   // Total hours across all selected workers
   const totalAllWorkers = useMemo(() => {
@@ -448,7 +532,7 @@ export function ReportGenerator() {
       <div>
         <h1 className="text-2xl font-bold md:text-3xl">Generazione Report</h1>
         <p className="text-muted-foreground">
-          Genera report mensili per dipendenti, collaboratori e clienti
+          Genera report per dipendenti, collaboratori e clienti
         </p>
       </div>
 
@@ -470,25 +554,89 @@ export function ReportGenerator() {
             <CardHeader className="pb-4">
               <CardTitle className="text-base">Filtri Report</CardTitle>
               <CardDescription>
-                Seleziona mese e lavoratori per generare il report
+                Seleziona tipo di periodo e lavoratori per generare il report
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="employee-month" className="text-sm font-medium">Mese/Anno</Label>
-                  <Input
-                    id="employee-month"
-                    type="month"
-                    className="rounded-lg"
-                    value={`${parseMonthLabel(employeeMonth).year}-${String(parseMonthLabel(employeeMonth).month + 1).padStart(2, "0")}`}
-                    onChange={(e) => {
-                      const [year, month] = e.target.value.split("-")
-                      setEmployeeMonth(`${MONTHS_IT[Number(month) - 1]} ${year}`)
-                    }}
-                  />
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Tipo Periodo</Label>
+                <div className="flex flex-wrap gap-2">
+                  {(["mensile", "giornaliero", "personalizzato"] as PeriodType[]).map((type) => (
+                    <Button
+                      key={type}
+                      type="button"
+                      variant={employeePeriodType === type ? "secondary" : "outline"}
+                      size="sm"
+                      onClick={() => setEmployeePeriodType(type)}
+                      className="rounded-lg"
+                    >
+                      {type === "mensile" ? "Mensile" : type === "giornaliero" ? "Giornaliero" : "Personalizzato"}
+                    </Button>
+                  ))}
                 </div>
               </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                {employeePeriodType === "mensile" && (
+                  <div className="space-y-2">
+                    <Label htmlFor="employee-month" className="text-sm font-medium">Mese/Anno</Label>
+                    <Input
+                      id="employee-month"
+                      type="month"
+                      className="rounded-lg"
+                      value={`${parseMonthLabel(employeeMonth).year}-${String(parseMonthLabel(employeeMonth).month + 1).padStart(2, "0")}`}
+                      onChange={(e) => {
+                        const [year, month] = e.target.value.split("-")
+                        setEmployeeMonth(`${MONTHS_IT[Number(month) - 1]} ${year}`)
+                      }}
+                    />
+                  </div>
+                )}
+
+                {employeePeriodType === "giornaliero" && (
+                  <div className="space-y-2">
+                    <Label htmlFor="employee-date" className="text-sm font-medium">Data</Label>
+                    <Input
+                      id="employee-date"
+                      type="date"
+                      className="rounded-lg"
+                      value={employeeDate}
+                      onChange={(e) => setEmployeeDate(e.target.value)}
+                    />
+                  </div>
+                )}
+
+                {employeePeriodType === "personalizzato" && (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="employee-start-date" className="text-sm font-medium">Data Inizio</Label>
+                      <Input
+                        id="employee-start-date"
+                        type="date"
+                        className="rounded-lg"
+                        value={employeeStartDate}
+                        onChange={(e) => setEmployeeStartDate(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="employee-end-date" className="text-sm font-medium">Data Fine</Label>
+                      <Input
+                        id="employee-end-date"
+                        type="date"
+                        className="rounded-lg"
+                        value={employeeEndDate}
+                        onChange={(e) => setEmployeeEndDate(e.target.value)}
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {employeeDateInvalid && (
+                <p className="text-sm text-destructive">
+                  La data di fine deve essere maggiore o uguale alla data di inizio.
+                </p>
+              )}
 
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
@@ -560,12 +708,12 @@ export function ReportGenerator() {
             </CardContent>
           </Card>
 
-          {selectedWorkerIds.size > 0 && employeeLoaded && (
+          {selectedWorkerIds.size > 0 && employeeLoaded && !employeeDateInvalid && (
             <Card className="shadow-md border-border/50 rounded-2xl overflow-hidden">
               <CardHeader className="pb-4">
                 <CardTitle className="text-base">Anteprima Report</CardTitle>
                 <CardDescription>
-                  {employeeMonth} — {selectedWorkerIds.size} lavoratore{(selectedWorkerIds.size > 1 ? " selezionati" : " selezionato")}
+                  {employeePeriodLabel} — {selectedWorkerIds.size} lavoratore{(selectedWorkerIds.size > 1 ? " selezionati" : " selezionato")}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -648,10 +796,10 @@ export function ReportGenerator() {
                     document={
                       <EmployeeReportPDF
                         workersData={workersData}
-                        monthLabel={employeeMonth}
+                        periodLabel={employeePeriodLabel}
                       />
                     }
-                    fileName={`report-mensile-cumulativo-${employeeMonth.replace(/\s+/g, "-").toLowerCase()}.pdf`}
+                    fileName={`report-${employeePeriodType}-cumulativo-${employeePeriodLabel.replace(/\s+/g, "-").toLowerCase()}.pdf`}
                   >
                     {({ loading }) => (
                       <Button disabled={loading} className="rounded-xl shadow-sm">
@@ -672,25 +820,91 @@ export function ReportGenerator() {
             <CardHeader className="pb-4">
               <CardTitle className="text-base">Filtri Report Cliente</CardTitle>
               <CardDescription>
-                Seleziona mese e clienti per generare il report
+                Seleziona tipo de periodo e clienti per generare il report
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="client-month" className="text-sm font-medium">Mese/Anno</Label>
-                  <Input
-                    id="client-month"
-                    type="month"
-                    className="rounded-lg"
-                    value={`${parseMonthLabel(clientMonth).year}-${String(parseMonthLabel(clientMonth).month + 1).padStart(2, "0")}`}
-                    onChange={(e) => {
-                      const [year, month] = e.target.value.split("-")
-                      setClientMonth(`${MONTHS_IT[Number(month) - 1]} ${year}`)
-                    }}
-                  />
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Tipo Periodo</Label>
+                <div className="flex flex-wrap gap-2">
+                  {(
+                    ["mensile", "giornaliero", "personalizzato"] as PeriodType[]
+                  ).map((type) => (
+                    <Button
+                      key={type}
+                      type="button"
+                      variant={clientPeriodType === type ? "secondary" : "outline"}
+                      size="sm"
+                      onClick={() => setClientPeriodType(type)}
+                      className="rounded-lg"
+                    >
+                      {type === "mensile" ? "Mensile" : type === "giornaliero" ? "Giornaliero" : "Personalizzato"}
+                    </Button>
+                  ))}
                 </div>
               </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                {clientPeriodType === "mensile" && (
+                  <div className="space-y-2">
+                    <Label htmlFor="client-month" className="text-sm font-medium">Mese/Anno</Label>
+                    <Input
+                      id="client-month"
+                      type="month"
+                      className="rounded-lg"
+                      value={`${parseMonthLabel(clientMonth).year}-${String(parseMonthLabel(clientMonth).month + 1).padStart(2, "0")}`}
+                      onChange={(e) => {
+                        const [year, month] = e.target.value.split("-")
+                        setClientMonth(`${MONTHS_IT[Number(month) - 1]} ${year}`)
+                      }}
+                    />
+                  </div>
+                )}
+
+                {clientPeriodType === "giornaliero" && (
+                  <div className="space-y-2">
+                    <Label htmlFor="client-date" className="text-sm font-medium">Data</Label>
+                    <Input
+                      id="client-date"
+                      type="date"
+                      className="rounded-lg"
+                      value={clientDate}
+                      onChange={(e) => setClientDate(e.target.value)}
+                    />
+                  </div>
+                )}
+
+                {clientPeriodType === "personalizzato" && (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="client-start-date" className="text-sm font-medium">Data Inizio</Label>
+                      <Input
+                        id="client-start-date"
+                        type="date"
+                        className="rounded-lg"
+                        value={clientStartDate}
+                        onChange={(e) => setClientStartDate(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="client-end-date" className="text-sm font-medium">Data Fine</Label>
+                      <Input
+                        id="client-end-date"
+                        type="date"
+                        className="rounded-lg"
+                        value={clientEndDate}
+                        onChange={(e) => setClientEndDate(e.target.value)}
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {clientDateInvalid && (
+                <p className="text-sm text-destructive">
+                  La data di fine deve essere maggiore o uguale alla data di inizio.
+                </p>
+              )}
 
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
@@ -759,12 +973,12 @@ export function ReportGenerator() {
             </CardContent>
           </Card>
 
-          {selectedClientIds.size > 0 && clientLoaded && (
+          {selectedClientIds.size > 0 && clientLoaded && !clientDateInvalid && (
             <Card className="shadow-md border-border/50 rounded-2xl overflow-hidden">
               <CardHeader className="pb-4">
                 <CardTitle className="text-base">Anteprima Report</CardTitle>
                 <CardDescription>
-                  {clientMonth} — {selectedClientIds.size} cliente{(selectedClientIds.size > 1 ? " selezionati" : " selezionato")}
+                  {clientPeriodLabel} — {selectedClientIds.size} cliente{(selectedClientIds.size > 1 ? " selezionati" : " selezionato")}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -851,10 +1065,10 @@ export function ReportGenerator() {
                     document={
                       <ClientReportPDF
                         clientsData={clientsData}
-                        monthLabel={clientMonth}
+                        periodLabel={clientPeriodLabel}
                       />
                     }
-                    fileName={`report-mensile-clienti-cumulativo-${clientMonth.replace(/\s+/g, "-").toLowerCase()}.pdf`}
+                    fileName={`report-${clientPeriodType}-clienti-cumulativo-${clientPeriodLabel.replace(/\s+/g, "-").toLowerCase()}.pdf`}
                   >
                     {({ loading }) => (
                       <Button disabled={loading} className="rounded-xl shadow-sm">
