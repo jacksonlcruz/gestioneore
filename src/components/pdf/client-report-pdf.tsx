@@ -17,13 +17,13 @@ export type ClientReportRow = {
 
 export type ClientReportData = {
   clientName: string
-  monthLabel: string
+  periodLabel: string
   rows: ClientReportRow[]
 }
 
 type ClientReportPDFProps = {
   clientsData: ClientReportData[]
-  monthLabel: string
+  periodLabel: string
 }
 
 const styles = StyleSheet.create({
@@ -84,6 +84,22 @@ const styles = StyleSheet.create({
   },
 })
 
+function formatDuration(totalDecimal: number): string {
+  let hours = Math.floor(totalDecimal)
+  let minutes = Math.round((totalDecimal - hours) * 60)
+
+  // Ajustar si los minutos llegan a 60
+  if (minutes === 60) {
+    hours += 1
+    minutes = 0
+  }
+
+  const decimalFormatted = totalDecimal.toFixed(2).replace(".", ",")
+  const clockFormatted = minutes === 0 ? `${hours}h` : `${hours}h ${minutes}m`
+
+  return `${decimalFormatted} ore (${clockFormatted})`
+}
+
 function ClientPage({ data }: { data: ClientReportData }) {
   const totalHours = data.rows.reduce(
     (sum, row) => sum + row.durationHours,
@@ -95,7 +111,7 @@ function ClientPage({ data }: { data: ClientReportData }) {
       <View style={styles.header}>
         <Text style={styles.title}>Rapporto Mensile Cliente</Text>
         <Text style={styles.subtitle}>Cliente: {data.clientName}</Text>
-        <Text style={styles.meta}>Mese/Anno: {data.monthLabel}</Text>
+        <Text style={styles.meta}>{data.periodLabel}</Text>
       </View>
 
       {data.rows.length === 0 ? (
@@ -108,7 +124,7 @@ function ClientPage({ data }: { data: ClientReportData }) {
             <Text style={styles.colDate}>Data</Text>
             <Text style={styles.colParticipants}>Partecipanti</Text>
             <Text style={styles.colTime}>Orario / Durata</Text>
-            <Text style={styles.colNote}>Note/Ubicazione</Text>
+            <Text style={styles.colNote}>Note / Ubicazione</Text>
           </View>
 
           {data.rows.map((row, index) => (
@@ -125,7 +141,7 @@ function ClientPage({ data }: { data: ClientReportData }) {
           ))}
 
           <Text style={styles.footer}>
-            Totale Ore Servizio nel Mese: {totalHours.toFixed(2)} ore
+            Totale Ore Servizio nel Periodo: {formatDuration(totalHours)}
           </Text>
         </>
       )}
@@ -135,7 +151,7 @@ function ClientPage({ data }: { data: ClientReportData }) {
 
 export function ClientReportPDF({
   clientsData,
-  monthLabel: _monthLabel,
+  periodLabel,
 }: ClientReportPDFProps) {
   return (
     <Document>
