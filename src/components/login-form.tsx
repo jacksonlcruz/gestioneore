@@ -69,18 +69,8 @@ export function LoginForm() {
         return
       }
 
-      // Buscar o perfil para redirecionar baseado na role
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", signInData.user.id)
-        .single()
-
-      if (profile?.role === "admin") {
-        router.push("/gestione")
-      } else {
-        router.push("/")
-      }
+      // Todos os usuários desembarcam na página inicial de lançamento de horas
+      router.push("/")
     } catch {
       toast.add({
         title: "Errore di connessione. Riprova.",

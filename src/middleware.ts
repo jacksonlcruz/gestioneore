@@ -41,17 +41,10 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // Se estiver logado e tentar acessar /login → redirecionar
+  // Se estiver logado e tentar acessar /login → redirecionar à home
   if (user && pathname === "/login") {
-    // Buscar role para redirecionamento adequado
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single()
-
     const url = request.nextUrl.clone()
-    url.pathname = profile?.role === "admin" ? "/gestione" : "/"
+    url.pathname = "/"
     return NextResponse.redirect(url)
   }
 
