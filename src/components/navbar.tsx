@@ -14,6 +14,7 @@ const navLinks = [
   { href: "/", label: "Nuovo Inserimento" },
   { href: "/registro", label: "Registro" },
   { href: "/report", label: "Report" },
+  { href: "/calcolo-rapido", label: "Calcolo Rapido" },
   { href: "/gestione", label: "Gestione" },
   { href: "/admin", label: "Area Admin" },
   { href: "/profilo", label: "Profilo" },
