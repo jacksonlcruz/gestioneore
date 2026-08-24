@@ -247,6 +247,11 @@ export function InsertionForm() {
       return
     }
 
+    // Se l'utente logato è stato rimosso, aggiungilo sempre come lavoratore principale
+    const employeeIdsWithOwner = currentUserProfile
+      ? Array.from(new Set([currentUserProfile.id, ...finalEmployeeIds]))
+      : finalEmployeeIds
+
     setIsSubmitting(true)
 
     const { data: record, error: recordError } = await supabase
@@ -272,7 +277,7 @@ export function InsertionForm() {
     }
 
     const participants = [
-      ...finalEmployeeIds.map((profileId) => ({
+      ...employeeIdsWithOwner.map((profileId) => ({
         service_record_id: record.id,
         worker_type: "employee" as const,
         profile_id: profileId,
@@ -299,7 +304,7 @@ export function InsertionForm() {
     }
 
     toast.add({
-      title: "Registrazione salvata con successo!",
+      title: "Ore registrate con successo",
       description: "Le ore lavorative sono state registrate",
       type: "success",
     })
@@ -424,13 +429,33 @@ export function InsertionForm() {
                 )}
               </div>
 
-              {/* Partecipanti */}
+              {/* Lavoratore Principale */}
+              {currentUserProfile && (
+                <div className="rounded-xl bg-primary/5 p-4 space-y-2 border border-primary/20">
+                  <Label className="text-sm font-medium">Lavoratore Principale</Label>
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+                      <Users className="h-4 w-4 text-primary" />
+                    </div>
+                    <p className="text-sm font-semibold">
+                      {currentUserProfile.full_name ?? "Utente"}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Partecipanti al Servizio */}
               <div className="rounded-xl bg-muted/30 p-4 space-y-4 border border-border/50">
                 <div className="flex items-center gap-2.5">
                   <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10">
                     <Users className="h-4 w-4 text-primary" />
                   </div>
-                  <Label className="text-sm font-medium">Chi ha lavorato?</Label>
+                  <div>
+                    <Label className="text-sm font-medium">Partecipanti al Servizio</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Seleziona colleghi o collaboratori che hanno lavorato insieme
+                    </p>
+                  </div>
                 </div>
 
                 <div className="space-y-2">
@@ -552,7 +577,7 @@ export function InsertionForm() {
                 disabled={isSubmitting}
               >
                 <Save className="h-5 w-5" />
-                {isSubmitting ? "Salvataggio..." : "Salva Registrazione"}
+                {isSubmitting ? "Salvataggio..." : "Registra Ore"}
               </Button>
             </form>
           </Form>
