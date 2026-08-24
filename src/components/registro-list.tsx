@@ -161,16 +161,23 @@ export function RegistroList() {
 
   // Load records whenever filters change
   useEffect(() => {
+    if (!currentUserId) return
+
     let cancelled = false
 
     const run = async () => {
       let query = supabase
         .from("service_records")
         .select(
-          "*, clients(name), service_participants(*, profiles(full_name), freelancers(name))"
+          "*, clients(name), service_participants!inner(*, profiles(full_name), freelancers(name))"
         )
         .order("date", { ascending: false })
         .order("start_time", { ascending: false })
+
+      // Funcionários veem apenas registros onde são participantes (INNER JOIN)
+      if (!isAdmin) {
+        query = query.eq("service_participants.profile_id", currentUserId)
+      }
 
       if (filterClientId) {
         query = query.eq("client_id", filterClientId)
@@ -202,7 +209,7 @@ export function RegistroList() {
     return () => {
       cancelled = true
     }
-  }, [supabase, filterClientId, filterStartDate, filterEndDate])
+  }, [supabase, currentUserId, isAdmin, filterClientId, filterStartDate, filterEndDate])
 
   function clearFilters() {
     setFilterClientId("")
@@ -392,7 +399,7 @@ export function RegistroList() {
               <CalendarDays className="h-7 w-7 text-muted-foreground" />
             </div>
             <p className="text-muted-foreground">
-              Nessuna registrazione trovata.
+              Nessun registro di lavoro trovato.
             </p>
           </CardContent>
         </Card>
