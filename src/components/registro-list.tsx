@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { CalendarDays, Clock, Eraser, Trash2 } from "lucide-react"
+import { CalendarDays, Clock, Eraser, Pencil, Trash2 } from "lucide-react"
 
 import { createClient } from "@/lib/supabase/client"
 import type { Database } from "@/types/database.types"
@@ -32,6 +32,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -103,6 +111,16 @@ export function RegistroList() {
 
   const [deleteTarget, setDeleteTarget] = useState<ServiceRecord | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+
+  const [editTarget, setEditTarget] = useState<ServiceRecord | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
+  const [editForm, setEditForm] = useState({
+    date: "",
+    client_id: "",
+    start_time: "",
+    end_time: "",
+    observation: "",
+  })
 
   // Load current user and role
   useEffect(() => {
@@ -192,6 +210,72 @@ export function RegistroList() {
     setFilterEndDate("")
   }
 
+  function canManage(record: ServiceRecord): boolean {
+    if (isAdmin) return true
+    if (!currentUserId) return false
+    return record.service_participants.some(
+      (p) => p.worker_type === "employee" && p.profile_id === currentUserId
+    )
+  }
+
+  function openEditDialog(record: ServiceRecord) {
+    setEditTarget(record)
+    setEditForm({
+      date: record.date,
+      client_id: record.client_id,
+      start_time: record.start_time.slice(0, 5),
+      end_time: record.end_time.slice(0, 5),
+      observation: record.observation ?? "",
+    })
+  }
+
+  async function handleSaveEdit() {
+    if (!editTarget) return
+
+    setIsSaving(true)
+    const { error } = await supabase
+      .from("service_records")
+      .update({
+        date: editForm.date,
+        client_id: editForm.client_id,
+        start_time: editForm.start_time,
+        end_time: editForm.end_time,
+        observation: editForm.observation || null,
+      })
+      .eq("id", editTarget.id)
+
+    if (error) {
+      toast.add({
+        title: "Errore",
+        description: "Impossibile aggiornare la registrazione",
+        type: "error",
+      })
+    } else {
+      toast.add({
+        title: "Registro aggiornato con successo",
+        type: "success",
+      })
+      // Update local state
+      setRecords((prev) =>
+        prev.map((r) =>
+          r.id === editTarget.id
+            ? {
+                ...r,
+                date: editForm.date,
+                client_id: editForm.client_id,
+                start_time: editForm.start_time,
+                end_time: editForm.end_time,
+                observation: editForm.observation || null,
+                clients: clients.find((c) => c.id === editForm.client_id) ?? null,
+              }
+            : r
+        )
+      )
+      setEditTarget(null)
+    }
+    setIsSaving(false)
+  }
+
   async function handleDelete() {
     if (!deleteTarget) return
 
@@ -209,21 +293,13 @@ export function RegistroList() {
       })
     } else {
       toast.add({
-        title: "Registrazione eliminata con successo!",
+        title: "Registro eliminato con successo",
         type: "success",
       })
       setRecords((prev) => prev.filter((r) => r.id !== deleteTarget.id))
     }
     setIsDeleting(false)
     setDeleteTarget(null)
-  }
-
-  function canDelete(record: ServiceRecord): boolean {
-    if (isAdmin) return true
-    if (!currentUserId) return false
-    return record.service_participants.some(
-      (p) => p.worker_type === "employee" && p.profile_id === currentUserId
-    )
   }
 
   const hasFilters = filterClientId || filterStartDate || filterEndDate
@@ -335,16 +411,27 @@ export function RegistroList() {
                         {formatDate(record.date)}
                       </div>
                     </div>
-                    {canDelete(record) && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setDeleteTarget(record)}
-                        aria-label="Elimina registrazione"
-                        className="text-destructive rounded-lg min-h-[44px] min-w-[44px]"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                    {canManage(record) && (
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => openEditDialog(record)}
+                          aria-label="Modifica registrazione"
+                          className="rounded-lg min-h-[44px] min-w-[44px]"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setDeleteTarget(record)}
+                          aria-label="Elimina registrazione"
+                          className="text-destructive rounded-lg min-h-[44px] min-w-[44px]"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     )}
                   </div>
 
@@ -389,7 +476,7 @@ export function RegistroList() {
                     <TableHead className="font-semibold">Orario</TableHead>
                     <TableHead className="font-semibold">Partecipanti</TableHead>
                     <TableHead className="font-semibold">Note</TableHead>
-                    <TableHead className="w-[50px] text-right font-semibold">Azioni</TableHead>
+                    <TableHead className="w-[100px] text-right font-semibold">Azioni</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -431,16 +518,27 @@ export function RegistroList() {
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        {canDelete(record) && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setDeleteTarget(record)}
-                            aria-label="Elimina registrazione"
-                            className="text-destructive rounded-lg"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                        {canManage(record) && (
+                          <div className="flex justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => openEditDialog(record)}
+                              aria-label="Modifica registrazione"
+                              className="rounded-lg"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setDeleteTarget(record)}
+                              aria-label="Elimina registrazione"
+                              className="text-destructive rounded-lg"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         )}
                       </TableCell>
                     </TableRow>
@@ -451,6 +549,103 @@ export function RegistroList() {
           </Card>
         </>
       )}
+
+      {/* Dialog di modifica */}
+      <Dialog
+        open={editTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setEditTarget(null)
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Modifica Registro</DialogTitle>
+            <DialogDescription>
+              Aggiorna i dati della registrazione
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-date" className="text-sm font-medium">Data</Label>
+              <Input
+                id="edit-date"
+                type="date"
+                value={editForm.date}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, date: e.target.value }))}
+                className="rounded-lg"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Cliente</Label>
+              <Select
+                items={clients.map((c) => ({ label: c.name, value: c.id }))}
+                value={editForm.client_id || null}
+                onValueChange={(value) => setEditForm((prev) => ({ ...prev, client_id: value ?? "" }))}
+              >
+                <SelectTrigger className="w-full rounded-lg">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {clients.map((client) => (
+                    <SelectItem key={client.id} value={client.id}>
+                      {client.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-start-time" className="text-sm font-medium">Ora Inizio</Label>
+                <Input
+                  id="edit-start-time"
+                  type="time"
+                  value={editForm.start_time}
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, start_time: e.target.value }))}
+                  className="rounded-lg"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-end-time" className="text-sm font-medium">Ora Fine</Label>
+                <Input
+                  id="edit-end-time"
+                  type="time"
+                  value={editForm.end_time}
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, end_time: e.target.value }))}
+                  className="rounded-lg"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-observation" className="text-sm font-medium">Note / Ubicazione</Label>
+              <Input
+                id="edit-observation"
+                type="text"
+                value={editForm.observation}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, observation: e.target.value }))}
+                placeholder="Note o ubicazione del servizio"
+                className="rounded-lg"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setEditTarget(null)}
+              className="rounded-lg"
+            >
+              Annulla
+            </Button>
+            <Button
+              onClick={handleSaveEdit}
+              disabled={isSaving || !editForm.date || !editForm.client_id || !editForm.start_time || !editForm.end_time}
+              className="rounded-lg"
+            >
+              {isSaving ? "Salvataggio..." : "Salva Modifiche"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Dialog di conferma eliminazione */}
       <AlertDialog
@@ -463,7 +658,7 @@ export function RegistroList() {
           <AlertDialogHeader>
             <AlertDialogTitle>Conferma eliminazione</AlertDialogTitle>
             <AlertDialogDescription>
-              {`Sei sicuro di voler eliminare questa registrazione? L'azione non può essere annullata.`}
+              {`Sei sicuro di voler eliminare questo registro? L'azione non può essere annullata.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -473,7 +668,7 @@ export function RegistroList() {
               onClick={handleDelete}
               disabled={isDeleting}
             >
-              {isDeleting ? "Eliminazione..." : "Elimina"}
+              {isDeleting ? "Eliminazione..." : "Conferma"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
