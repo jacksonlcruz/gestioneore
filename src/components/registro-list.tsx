@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { CalendarDays, Clock, Eraser, Pencil, Trash2 } from "lucide-react"
+import { CalendarDays, Clock, Eraser, Pencil, Search, Trash2, User } from "lucide-react"
 
 import { createClient } from "@/lib/supabase/client"
 import type { Database } from "@/types/database.types"
@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
+import { AutocompleteInput } from "@/components/ui/autocomplete-input"
 import {
   Card,
   CardContent,
@@ -53,6 +54,14 @@ import {
 import { toast } from "@/components/ui/toast"
 
 type Client = Database["public"]["Tables"]["clients"]["Row"]
+type Profile = Database["public"]["Tables"]["profiles"]["Row"]
+type Freelancer = Database["public"]["Tables"]["freelancers"]["Row"]
+
+type Worker = {
+  id: string
+  name: string
+  type: "employee" | "freelancer"
+}
 
 type ServiceRecord =
   Database["public"]["Tables"]["service_records"]["Row"] & {
@@ -108,6 +117,11 @@ export function RegistroList() {
   const [filterClientId, setFilterClientId] = useState<string>("")
   const [filterStartDate, setFilterStartDate] = useState<string>("")
   const [filterEndDate, setFilterEndDate] = useState<string>("")
+  const [filterParticipantId, setFilterParticipantId] = useState<string>("")
+  const [filterSearchText, setFilterSearchText] = useState<string>("")
+
+  const [profiles, setProfiles] = useState<Profile[]>([])
+  const [freelancers, setFreelancers] = useState<Freelancer[]>([])
 
   const [deleteTarget, setDeleteTarget] = useState<ServiceRecord | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -159,6 +173,22 @@ export function RegistroList() {
     }
   }, [supabase])
 
+  // Load workers (profiles and freelancers) for participant filter
+  useEffect(() => {
+    let cancelled = false
+    const loadWorkers = async () => {
+      const [profilesRes, freelancersRes] = await Promise.all([
+        supabase.from("profiles").select("*").order("full_name"),
+        supabase.from("freelancers").select("*").order("name"),
+      ])
+      if (cancelled) return
+      if (profilesRes.data) setProfiles(profilesRes.data)
+      if (freelancersRes.data) setFreelancers(freelancersRes.data)
+    }
+    loadWorkers()
+    return () => { cancelled = true }
+  }, [supabase])
+
   // Load records whenever filters change
   useEffect(() => {
     if (!currentUserId) return
@@ -188,6 +218,14 @@ export function RegistroList() {
       if (filterEndDate) {
         query = query.lte("date", filterEndDate)
       }
+      if (filterParticipantId) {
+        const [type, id] = filterParticipantId.split(":")
+        if (type === "emp") {
+          query = query.eq("service_participants.profile_id", id)
+        } else if (type === "frl") {
+          query = query.eq("service_participants.freelancer_id", id)
+        }
+      }
 
       const { data, error } = await query
 
@@ -209,12 +247,41 @@ export function RegistroList() {
     return () => {
       cancelled = true
     }
-  }, [supabase, currentUserId, isAdmin, filterClientId, filterStartDate, filterEndDate])
+  }, [supabase, currentUserId, isAdmin, filterClientId, filterStartDate, filterEndDate, filterParticipantId])
+
+  const workers: Worker[] = useMemo(() => {
+    const employeeWorkers = profiles
+      .filter((p) => p.full_name)
+      .map((p) => ({
+        id: `emp:${p.id}`,
+        name: p.full_name!,
+        type: "employee" as const,
+      }))
+    const freelancerWorkers = freelancers.map((f) => ({
+      id: `frl:${f.id}`,
+      name: f.name,
+      type: "freelancer" as const,
+    }))
+    return [...employeeWorkers, ...freelancerWorkers].sort((a, b) =>
+      a.name.localeCompare(b.name)
+    )
+  }, [profiles, freelancers])
+
+  // Apply note search filter client-side for better UX
+  const filteredRecords = useMemo(() => {
+    if (!filterSearchText) return records
+    const searchLower = filterSearchText.toLowerCase()
+    return records.filter((r) =>
+      (r.observation ?? "").toLowerCase().includes(searchLower)
+    )
+  }, [records, filterSearchText])
 
   function clearFilters() {
     setFilterClientId("")
     setFilterStartDate("")
     setFilterEndDate("")
+    setFilterParticipantId("")
+    setFilterSearchText("")
   }
 
   function canManage(record: ServiceRecord): boolean {
@@ -309,8 +376,8 @@ export function RegistroList() {
     setDeleteTarget(null)
   }
 
-  const hasFilters = filterClientId || filterStartDate || filterEndDate
-  const showEmptyState = loaded && records.length === 0
+  const hasFilters = filterClientId || filterStartDate || filterEndDate || filterParticipantId || filterSearchText
+  const showEmptyState = loaded && filteredRecords.length === 0
 
   return (
     <div className="mx-auto w-full max-w-4xl space-y-6">
@@ -331,26 +398,32 @@ export function RegistroList() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-4">
-            <div className="space-y-2 md:col-span-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="space-y-2">
               <Label className="text-sm font-medium">Filtra per cliente</Label>
-              <Select
+              <AutocompleteInput
                 items={clients.map((c) => ({ label: c.name, value: c.id }))}
-                value={filterClientId || null}
-                onValueChange={(value) => setFilterClientId(value ?? "")}
-              >
-                <SelectTrigger className="w-full rounded-lg">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">Tutti i clienti</SelectItem>
-                  {clients.map((client) => (
-                    <SelectItem key={client.id} value={client.id}>
-                      {client.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                value={filterClientId}
+                onValueChange={(value) => setFilterClientId(value)}
+                placeholder="Cerca o seleziona cliente..."
+                emptyMessage="Nessun cliente trovato."
+                className="h-12"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Filtra per partecipante</Label>
+              <AutocompleteInput
+                items={workers.map((w) => ({
+                  label: w.type === "freelancer" ? `${w.name} (Collaboratore)` : w.name,
+                  value: w.id,
+                }))}
+                value={filterParticipantId}
+                onValueChange={(value) => setFilterParticipantId(value)}
+                placeholder="Tutti i partecipanti"
+                emptyMessage="Nessun partecipante trovato."
+                className="h-12"
+              />
             </div>
 
             <div className="space-y-2">
@@ -360,7 +433,7 @@ export function RegistroList() {
                 type="date"
                 value={filterStartDate}
                 onChange={(e) => setFilterStartDate(e.target.value)}
-                className="rounded-lg"
+                className="rounded-lg h-12"
               />
             </div>
 
@@ -371,16 +444,31 @@ export function RegistroList() {
                 type="date"
                 value={filterEndDate}
                 onChange={(e) => setFilterEndDate(e.target.value)}
-                className="rounded-lg"
+                className="rounded-lg h-12"
               />
+            </div>
+
+            <div className="space-y-2 sm:col-span-2 lg:col-span-4">
+              <Label htmlFor="search-notes" className="text-sm font-medium">Cerca nelle note</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  id="search-notes"
+                  type="text"
+                  value={filterSearchText}
+                  onChange={(e) => setFilterSearchText(e.target.value)}
+                  placeholder="Cerca nelle note..."
+                  className="rounded-lg h-12 pl-9"
+                />
+              </div>
             </div>
           </div>
 
           {hasFilters && (
             <div className="mt-4">
-              <Button variant="outline" size="sm" onClick={clearFilters} className="rounded-lg">
+              <Button variant="outline" size="sm" onClick={clearFilters} className="rounded-lg min-h-[44px]">
                 <Eraser className="h-4 w-4" />
-                Pulisci filtri
+                Azzera filtri
               </Button>
             </div>
           )}
@@ -407,7 +495,7 @@ export function RegistroList() {
         <>
           {/* Mobile: Cards */}
           <div className="space-y-3 md:hidden">
-            {records.map((record) => (
+            {filteredRecords.map((record) => (
               <Card key={record.id} className="shadow-sm border-border/50 rounded-xl overflow-hidden">
                 <CardContent className="space-y-3 pt-4">
                   <div className="flex items-start justify-between gap-2">
@@ -491,7 +579,7 @@ export function RegistroList() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {records.map((record, index) => (
+                  {filteredRecords.map((record, index) => (
                     <TableRow key={record.id} className={index % 2 === 1 ? "bg-muted/20" : ""}>
                       <TableCell className="whitespace-nowrap">
                         {formatDate(record.date)}
