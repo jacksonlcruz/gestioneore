@@ -144,9 +144,11 @@ export function DashboardOverview() {
 
     for (const r of records) {
       const duration = toDurationHours(r.start_time, r.end_time)
+      const participantCount = r.service_participants.length
+      const serviceHours = duration * participantCount
       const hourlyRate = r.clients?.hourly_rate ?? 0
-      totalHours += duration
-      totalRevenue += duration * hourlyRate
+      totalHours += serviceHours
+      totalRevenue += serviceHours * hourlyRate
       if (r.client_id) clientIds.add(r.client_id)
       for (const p of r.service_participants) {
         if (p.worker_type === "employee" && p.profile_id) {
@@ -170,17 +172,19 @@ export function DashboardOverview() {
     const map = new Map<string, { name: string; hours: number; revenue: number }>()
     for (const r of records) {
       const duration = toDurationHours(r.start_time, r.end_time)
+      const participantCount = r.service_participants.length
+      const serviceHours = duration * participantCount
       const hourlyRate = r.clients?.hourly_rate ?? 0
       const clientId = r.client_id
       const existing = map.get(clientId)
       if (existing) {
-        existing.hours += duration
-        existing.revenue += duration * hourlyRate
+        existing.hours += serviceHours
+        existing.revenue += serviceHours * hourlyRate
       } else {
         map.set(clientId, {
           name: r.clients?.name ?? "Sconosciuto",
-          hours: duration,
-          revenue: duration * hourlyRate,
+          hours: serviceHours,
+          revenue: serviceHours * hourlyRate,
         })
       }
     }
