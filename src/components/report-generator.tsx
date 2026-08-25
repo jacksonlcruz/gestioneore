@@ -1304,7 +1304,7 @@ export function ReportGenerator() {
 
           {/* Dialog di modifica temporanea per Admin */}
           <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="w-[95vw] max-w-lg sm:max-w-md">
               <DialogHeader>
                 <DialogTitle>Modifica per PDF</DialogTitle>
                 <DialogDescription>
@@ -1320,7 +1320,7 @@ export function ReportGenerator() {
                       type="time"
                       value={editForm.startTime}
                       onChange={(e) => setEditForm((prev) => ({ ...prev, startTime: e.target.value }))}
-                      className="rounded-lg"
+                      className="rounded-lg h-12 text-base"
                     />
                   </div>
                   <div className="space-y-2">
@@ -1330,7 +1330,7 @@ export function ReportGenerator() {
                       type="time"
                       value={editForm.endTime}
                       onChange={(e) => setEditForm((prev) => ({ ...prev, endTime: e.target.value }))}
-                      className="rounded-lg"
+                      className="rounded-lg h-12 text-base"
                     />
                   </div>
                 </div>
@@ -1343,7 +1343,7 @@ export function ReportGenerator() {
                     min={0}
                     value={editForm.durationHours}
                     onChange={(e) => setEditForm((prev) => ({ ...prev, durationHours: Number(e.target.value) }))}
-                    className="rounded-lg"
+                    className="rounded-lg h-12"
                   />
                 </div>
                 <div className="space-y-2">
@@ -1354,21 +1354,21 @@ export function ReportGenerator() {
                     value={editForm.observation}
                     onChange={(e) => setEditForm((prev) => ({ ...prev, observation: e.target.value }))}
                     placeholder="Note o ubicazione del servizio"
-                    className="rounded-lg"
+                    className="rounded-lg h-12"
                   />
                 </div>
               </div>
-              <DialogFooter>
+              <DialogFooter className="flex-col-reverse sm:flex-row sm:justify-end gap-2">
                 <Button
                   variant="outline"
                   onClick={() => setEditDialogOpen(false)}
-                  className="rounded-lg"
+                  className="rounded-lg w-full sm:w-auto min-h-[44px]"
                 >
                   Annulla
                 </Button>
                 <Button
                   onClick={handleSaveEdit}
-                  className="rounded-lg"
+                  className="rounded-lg w-full sm:w-auto min-h-[44px]"
                 >
                   Salva Modifiche
                 </Button>

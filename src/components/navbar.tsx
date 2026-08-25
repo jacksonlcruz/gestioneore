@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
-import { Clock, LogOut, Menu, User, X } from "lucide-react"
+import { Calculator, Clock, FileText, LayoutDashboard, LogOut, Menu, Settings, User, Users, X } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
@@ -11,13 +11,13 @@ import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
 
 const navLinks = [
-  { href: "/", label: "Nuovo Inserimento" },
-  { href: "/registro", label: "Registro" },
-  { href: "/report", label: "Report" },
-  { href: "/calcolo-rapido", label: "Calcolo Rapido" },
-  { href: "/gestione", label: "Gestione" },
-  { href: "/admin", label: "Area Admin" },
-  { href: "/profilo", label: "Profilo" },
+  { href: "/", label: "Nuovo Inserimento", icon: LayoutDashboard },
+  { href: "/registro", label: "Registro", icon: FileText },
+  { href: "/report", label: "Report", icon: Clock },
+  { href: "/calcolo-rapido", label: "Calcolo Rapido", icon: Calculator },
+  { href: "/gestione", label: "Gestione", icon: Settings },
+  { href: "/admin", label: "Area Admin", icon: Users },
+  { href: "/profilo", label: "Profilo", icon: User },
 ]
 
 const publicRoute = "/login"
@@ -125,63 +125,85 @@ export function Navbar() {
         </nav>
 
         {/* Pulsante menu mobile */}
-        <button
-          type="button"
-          className={cn(
-            buttonVariants({ variant: "ghost", size: "icon" }),
-            "md:hidden rounded-lg min-h-[44px] min-w-[44px]"
+        <div className="flex items-center gap-1.5 md:hidden">
+          {userName && (
+            <span className="flex items-center gap-1 px-2 py-1.5 text-xs text-muted-foreground rounded-md bg-muted/50 max-w-[120px]">
+              <span className="truncate">{userName}</span>
+              {userRole && (
+                <span className={`inline-flex h-4 shrink-0 items-center rounded-full px-1.5 text-[9px] font-semibold uppercase tracking-wide ${
+                  userRole === "admin"
+                    ? "bg-purple-100 text-purple-800"
+                    : "bg-slate-100 text-slate-700"
+                }`}>
+                  {userRole === "admin" ? "A" : "D"}
+                </span>
+              )}
+            </span>
           )}
-          onClick={() => setIsOpen(!isOpen)}
-          aria-label={isOpen ? "Chiudi menu" : "Apri menu"}
-        >
-          {isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </button>
+          <button
+            type="button"
+            className={cn(
+              buttonVariants({ variant: "ghost", size: "icon" }),
+              "rounded-lg min-h-[44px] min-w-[44px]"
+            )}
+            onClick={() => setIsOpen(!isOpen)}
+            aria-label={isOpen ? "Chiudi menu" : "Apri menu"}
+            aria-expanded={isOpen}
+          >
+            {isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
+        </div>
       </div>
 
       {/* Menu mobile */}
       {isOpen && (
-        <nav className="animate-slide-in-top border-t border-border/40 bg-background/95 backdrop-blur-xl px-4 py-3 md:hidden">
-          <div className="space-y-1">
-            {filteredLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                onClick={() => setIsOpen(false)}
-                className={cn(
-                  buttonVariants({
-                    variant: pathname === link.href ? "secondary" : "ghost",
-                  }),
-                  "w-full justify-start min-h-[44px] rounded-lg text-sm font-medium"
-                )}
-              >
-                {link.label}
-              </Link>
-            ))}
+        <nav className="animate-slide-in-top border-t border-border/40 bg-background/95 backdrop-blur-xl px-4 py-4 md:hidden max-h-[calc(100vh-4rem)] overflow-y-auto">
+          <div className="space-y-1.5">
+            {filteredLinks.map((link) => {
+              const Icon = link.icon
+              const isActive = pathname === link.href
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setIsOpen(false)}
+                  className={cn(
+                    buttonVariants({
+                      variant: isActive ? "secondary" : "ghost",
+                    }),
+                    "w-full justify-start min-h-[48px] rounded-xl text-base font-medium px-4 gap-3",
+                    isActive && "shadow-sm"
+                  )}
+                >
+                  <Icon className={cn("h-5 w-5", isActive ? "text-primary" : "text-muted-foreground")} />
+                  {link.label}
+                </Link>
+              )
+            })}
           </div>
-          {userName && (
-            <div className="mt-3 border-t border-border/40 pt-3">
-              <p className="flex items-center gap-1.5 px-3 py-2 text-sm text-muted-foreground rounded-md bg-muted/50">
-                {userName}
-                {userRole && (
-                  <span className={`inline-flex h-4 items-center rounded-full px-1.5 text-[10px] font-semibold uppercase tracking-wide ${
-                    userRole === "admin"
-                      ? "bg-purple-100 text-purple-800"
-                      : "bg-slate-100 text-slate-700"
-                  }`}>
-                    {userRole === "admin" ? "Admin" : "Dip."}
-                  </span>
-                )}
-              </p>
-            </div>
-          )}
-          <Button
-            variant="ghost"
-            className="mt-2 w-full justify-start min-h-[44px] rounded-lg text-destructive hover:text-destructive hover:bg-destructive/10"
-            onClick={handleLogout}
-          >
-            <LogOut className="h-4 w-4" />
-            Esci
-          </Button>
+          <div className="mt-3 border-t border-border/40 pt-3 space-y-1.5">
+            <p className="flex items-center gap-2 px-4 py-2.5 text-sm text-muted-foreground rounded-xl bg-muted/50">
+              <User className="h-4 w-4 shrink-0" />
+              <span className="truncate">{userName}</span>
+              {userRole && (
+                <span className={`inline-flex h-5 shrink-0 items-center rounded-full px-2 text-[10px] font-semibold uppercase tracking-wide ${
+                  userRole === "admin"
+                    ? "bg-purple-100 text-purple-800"
+                    : "bg-slate-100 text-slate-700"
+                }`}>
+                  {userRole === "admin" ? "Admin" : "Dip."}
+                </span>
+              )}
+            </p>
+            <Button
+              variant="ghost"
+              className="w-full justify-start min-h-[48px] rounded-xl text-base text-destructive hover:text-destructive hover:bg-destructive/10 gap-3 px-4"
+              onClick={handleLogout}
+            >
+              <LogOut className="h-5 w-5" />
+              Esci
+            </Button>
+          </div>
         </nav>
       )}
     </header>
