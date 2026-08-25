@@ -572,7 +572,7 @@ export function RegistroList() {
           if (!open) setEditTarget(null)
         }}
       >
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="w-[95vw] max-w-lg sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Modifica Registro</DialogTitle>
             <DialogDescription>
@@ -587,7 +587,7 @@ export function RegistroList() {
                 type="date"
                 value={editForm.date}
                 onChange={(e) => setEditForm((prev) => ({ ...prev, date: e.target.value }))}
-                className="rounded-lg"
+                className="rounded-lg h-12 text-base"
               />
             </div>
             <div className="space-y-2">
@@ -597,7 +597,7 @@ export function RegistroList() {
                 value={editForm.client_id || null}
                 onValueChange={(value) => setEditForm((prev) => ({ ...prev, client_id: value ?? "" }))}
               >
-                <SelectTrigger className="w-full rounded-lg">
+                <SelectTrigger className="w-full rounded-lg h-12">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -617,7 +617,7 @@ export function RegistroList() {
                   type="time"
                   value={editForm.start_time}
                   onChange={(e) => setEditForm((prev) => ({ ...prev, start_time: e.target.value }))}
-                  className="rounded-lg"
+                  className="rounded-lg h-12 text-base"
                 />
               </div>
               <div className="space-y-2">
@@ -627,7 +627,7 @@ export function RegistroList() {
                   type="time"
                   value={editForm.end_time}
                   onChange={(e) => setEditForm((prev) => ({ ...prev, end_time: e.target.value }))}
-                  className="rounded-lg"
+                  className="rounded-lg h-12 text-base"
                 />
               </div>
             </div>
@@ -639,22 +639,22 @@ export function RegistroList() {
                 value={editForm.observation}
                 onChange={(e) => setEditForm((prev) => ({ ...prev, observation: e.target.value }))}
                 placeholder="Note o ubicazione del servizio"
-                className="rounded-lg"
+                className="rounded-lg h-12"
               />
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="flex-col-reverse sm:flex-row sm:justify-end gap-2">
             <Button
               variant="outline"
               onClick={() => setEditTarget(null)}
-              className="rounded-lg"
+              className="rounded-lg w-full sm:w-auto min-h-[44px]"
             >
               Annulla
             </Button>
             <Button
               onClick={handleSaveEdit}
               disabled={isSaving || !editForm.date || !editForm.client_id || !editForm.start_time || !editForm.end_time}
-              className="rounded-lg"
+              className="rounded-lg w-full sm:w-auto min-h-[44px]"
             >
               {isSaving ? "Salvataggio..." : "Salva Modifiche"}
             </Button>
@@ -669,19 +669,20 @@ export function RegistroList() {
           if (!open) setDeleteTarget(null)
         }}
       >
-        <AlertDialogContent>
+        <AlertDialogContent className="w-[95vw] max-w-lg">
           <AlertDialogHeader>
             <AlertDialogTitle>Conferma eliminazione</AlertDialogTitle>
             <AlertDialogDescription>
               {`Sei sicuro di voler eliminare questo registro? L'azione non può essere annullata.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Annulla</AlertDialogCancel>
+          <AlertDialogFooter className="flex-col-reverse sm:flex-row sm:justify-end gap-2">
+            <AlertDialogCancel className="w-full sm:w-auto min-h-[44px]">Annulla</AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
               onClick={handleDelete}
               disabled={isDeleting}
+              className="w-full sm:w-auto min-h-[44px]"
             >
               {isDeleting ? "Eliminazione..." : "Conferma"}
             </AlertDialogAction>

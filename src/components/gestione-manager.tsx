@@ -652,7 +652,7 @@ export function GestioneManager() {
 
       {/* 🟦 Dialog Cliente / Collaboratore */}
       <Dialog open={entityDialog.open} onOpenChange={(o) => setEntityDialog((p) => ({ ...p, open: o }))}>
-        <DialogContent>
+        <DialogContent className="w-[95vw] max-w-lg">
           <DialogHeader>
             <DialogTitle>{entityDialogTitle}</DialogTitle>
             <DialogDescription>
@@ -671,11 +671,11 @@ export function GestioneManager() {
               autoFocus
             />
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEntityDialog((p) => ({ ...p, open: false }))}>
+          <DialogFooter className="flex-col-reverse sm:flex-row sm:justify-end gap-2">
+            <Button variant="outline" onClick={() => setEntityDialog((p) => ({ ...p, open: false }))} className="w-full sm:w-auto min-h-[44px]">
               Annulla
             </Button>
-            <Button onClick={handleSaveEntity} disabled={!entityDialog.name.trim() || isSaving}>
+            <Button onClick={handleSaveEntity} disabled={!entityDialog.name.trim() || isSaving} className="w-full sm:w-auto min-h-[44px]">
               {isSaving ? "Salvataggio..." : "Salva"}
             </Button>
           </DialogFooter>
@@ -687,7 +687,7 @@ export function GestioneManager() {
         open={employeeDialog.open}
         onOpenChange={(o) => !o && setEmployeeDialog(initialEmployeeDialog)}
       >
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="w-[95vw] max-w-lg sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{employeeDialogTitle}</DialogTitle>
             <DialogDescription>
@@ -773,8 +773,8 @@ export function GestioneManager() {
               </Select>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEmployeeDialog(initialEmployeeDialog)}>
+          <DialogFooter className="flex-col-reverse sm:flex-row sm:justify-end gap-2">
+            <Button variant="outline" onClick={() => setEmployeeDialog(initialEmployeeDialog)} className="w-full sm:w-auto min-h-[44px]">
               Annulla
             </Button>
             <Button
@@ -784,6 +784,7 @@ export function GestioneManager() {
                 (employeeDialog.mode === "create" && !employeeDialog.email.trim()) ||
                 isSaving
               }
+              className="w-full sm:w-auto min-h-[44px]"
             >
               {isSaving ? "Salvataggio..." : "Salva"}
             </Button>
@@ -796,16 +797,16 @@ export function GestioneManager() {
         open={deleteTarget !== null}
         onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}
       >
-        <AlertDialogContent>
+        <AlertDialogContent className="w-[95vw] max-w-lg">
           <AlertDialogHeader>
             <AlertDialogTitle>Conferma eliminazione</AlertDialogTitle>
             <AlertDialogDescription>
               {`Sei sicuro di voler eliminare "${deleteTarget?.name ?? ""}"? L'azione non può essere annullata.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Annulla</AlertDialogCancel>
-            <AlertDialogAction variant="destructive" onClick={handleDelete} disabled={isDeleting}>
+          <AlertDialogFooter className="flex-col-reverse sm:flex-row sm:justify-end gap-2">
+            <AlertDialogCancel className="w-full sm:w-auto min-h-[44px]">Annulla</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={handleDelete} disabled={isDeleting} className="w-full sm:w-auto min-h-[44px]">
               {isDeleting ? "Eliminazione..." : "Elimina"}
             </AlertDialogAction>
           </AlertDialogFooter>

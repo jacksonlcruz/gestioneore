@@ -380,7 +380,7 @@ export function InsertionForm() {
                     id="date"
                     type="date"
                     {...form.register("date")}
-                    className="rounded-lg"
+                    className="rounded-lg h-12 text-base"
                   />
                   {form.formState.errors.date && (
                     <p className="text-sm text-destructive">
@@ -396,7 +396,7 @@ export function InsertionForm() {
                       id="start-time"
                       type="time"
                       {...form.register("startTime")}
-                      className="rounded-lg"
+                      className="rounded-lg h-12 text-base"
                     />
                     {form.formState.errors.startTime && (
                       <p className="text-sm text-destructive">
@@ -411,7 +411,7 @@ export function InsertionForm() {
                       id="end-time"
                       type="time"
                       {...form.register("endTime")}
-                      className="rounded-lg"
+                      className="rounded-lg h-12 text-base"
                     />
                     {form.formState.errors.endTime && (
                       <p className="text-sm text-destructive">
@@ -488,10 +488,10 @@ export function InsertionForm() {
                           <button
                             type="button"
                             onClick={() => handleRemoveEmployee(emp.value)}
-                            className="ml-0.5 rounded-full p-0.5 hover:bg-destructive/20 hover:text-destructive transition-colors"
+                            className="ml-0.5 rounded-full p-1.5 h-7 w-7 flex items-center justify-center hover:bg-destructive/20 hover:text-destructive transition-colors"
                             aria-label={`Rimuovi ${emp.label}`}
                           >
-                            <X className="h-3 w-3" />
+                            <X className="h-3.5 w-3.5" />
                           </button>
                         </Badge>
                       ))}
@@ -541,10 +541,10 @@ export function InsertionForm() {
                           <button
                             type="button"
                             onClick={() => handleRemoveFreelancer(frl.value)}
-                            className="ml-0.5 rounded-full p-0.5 hover:bg-destructive/20 hover:text-destructive transition-colors"
+                            className="ml-0.5 rounded-full p-1.5 h-7 w-7 flex items-center justify-center hover:bg-destructive/20 hover:text-destructive transition-colors"
                             aria-label={`Rimuovi ${frl.label}`}
                           >
-                            <X className="h-3 w-3" />
+                            <X className="h-3.5 w-3.5" />
                           </button>
                         </Badge>
                       ))}
@@ -572,7 +572,7 @@ export function InsertionForm() {
 
               <Button
                 type="submit"
-                className="w-full rounded-xl h-12 text-base font-medium shadow-sm transition-all duration-150 hover:shadow-md"
+                className="w-full rounded-xl h-14 text-lg font-bold shadow-md transition-all duration-150 hover:shadow-lg"
                 size="lg"
                 disabled={isSubmitting}
               >
@@ -586,7 +586,7 @@ export function InsertionForm() {
 
       {/* Dialog Nuovo Cliente */}
       <Dialog open={isNewClientOpen} onOpenChange={setIsNewClientOpen}>
-        <DialogContent>
+        <DialogContent className="w-[95vw] max-w-lg">
           <DialogHeader>
             <DialogTitle>Nuovo Cliente</DialogTitle>
             <DialogDescription>
@@ -602,11 +602,12 @@ export function InsertionForm() {
               placeholder="Es. Campeggio Max"
             />
           </div>
-          <DialogFooter>
+          <DialogFooter className="flex-col-reverse sm:flex-row sm:justify-end gap-2">
             <Button
               type="button"
               variant="outline"
               onClick={() => setIsNewClientOpen(false)}
+              className="w-full sm:w-auto min-h-[44px]"
             >
               Annulla
             </Button>
@@ -614,6 +615,7 @@ export function InsertionForm() {
               type="button"
               onClick={handleAddClient}
               disabled={!newClientName.trim()}
+              className="w-full sm:w-auto min-h-[44px]"
             >
               Salva
             </Button>
@@ -623,7 +625,7 @@ export function InsertionForm() {
 
       {/* Dialog Nuovo Collaboratore */}
       <Dialog open={isNewFreelancerOpen} onOpenChange={setIsNewFreelancerOpen}>
-        <DialogContent>
+        <DialogContent className="w-[95vw] max-w-lg">
           <DialogHeader>
             <DialogTitle>Nuovo Collaboratore Occasionale</DialogTitle>
             <DialogDescription>
@@ -639,11 +641,12 @@ export function InsertionForm() {
               placeholder="Es. Mario Verdi"
             />
           </div>
-          <DialogFooter>
+          <DialogFooter className="flex-col-reverse sm:flex-row sm:justify-end gap-2">
             <Button
               type="button"
               variant="outline"
               onClick={() => setIsNewFreelancerOpen(false)}
+              className="w-full sm:w-auto min-h-[44px]"
             >
               Annulla
             </Button>
@@ -651,6 +654,7 @@ export function InsertionForm() {
               type="button"
               onClick={handleAddFreelancer}
               disabled={!newFreelancerName.trim()}
+              className="w-full sm:w-auto min-h-[44px]"
             >
               Salva
             </Button>
