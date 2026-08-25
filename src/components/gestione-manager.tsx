@@ -80,6 +80,7 @@ interface EntityDialogState {
   kind: EntityKind
   name: string
   notes: string
+  hourlyRate: string
   editId: string | null
 }
 
@@ -106,6 +107,7 @@ const initialEntityDialog: EntityDialogState = {
   kind: "client",
   name: "",
   notes: "",
+  hourlyRate: "",
   editId: null,
 }
 
@@ -165,6 +167,7 @@ export function GestioneManager() {
       kind,
       name: item.name,
       notes: "",
+      hourlyRate: kind === "client" ? String((item as Client).hourly_rate ?? "") : "",
       editId: item.id,
     })
   }
@@ -177,9 +180,13 @@ export function GestioneManager() {
 
     if (entityDialog.mode === "create") {
       const table = entityDialog.kind === "client" ? "clients" : "freelancers"
+      const payload =
+        entityDialog.kind === "client"
+          ? { name, hourly_rate: parseFloat(entityDialog.hourlyRate) || 0 }
+          : { name }
       const { data, error } = await supabase
         .from(table)
-        .insert({ name })
+        .insert(payload as never)
         .select()
         .single()
 
@@ -196,15 +203,19 @@ export function GestioneManager() {
       }
     } else {
       const table = entityDialog.kind === "client" ? "clients" : "freelancers"
+      const payload =
+        entityDialog.kind === "client"
+          ? { name, hourly_rate: parseFloat(entityDialog.hourlyRate) || 0 }
+          : { name }
       const { error } = await supabase
         .from(table)
-        .update({ name })
+        .update(payload as never)
         .eq("id", entityDialog.editId!)
 
       if (error) {
         toast.add({ title: "Errore", description: `Errore durante l'aggiornamento`, type: "error" })
       } else if (entityDialog.kind === "client") {
-        setClients((prev) => prev.map((c) => c.id === entityDialog.editId ? { ...c, name } : c))
+        setClients((prev) => prev.map((c) => c.id === entityDialog.editId ? { ...c, name, hourly_rate: parseFloat(entityDialog.hourlyRate) || 0 } : c))
         toast.add({ title: "Cliente aggiornato con successo!", type: "success" })
         setEntityDialog((p) => ({ ...p, open: false }))
       } else {
@@ -537,13 +548,14 @@ export function GestioneManager() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Nome</TableHead>
+                    <TableHead>Tariffa Oraria</TableHead>
                     <TableHead className="w-[120px] text-right">Azioni</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {clients.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={2} className="py-8 text-center text-muted-foreground">
+                      <TableCell colSpan={3} className="py-8 text-center text-muted-foreground">
                         Nessun cliente registrato.
                       </TableCell>
                     </TableRow>
@@ -551,6 +563,13 @@ export function GestioneManager() {
                     clients.map((client) => (
                       <TableRow key={client.id}>
                         <TableCell className="font-medium">{client.name}</TableCell>
+                        <TableCell>
+                          {new Intl.NumberFormat("it-IT", {
+                            style: "currency",
+                            currency: "EUR",
+                          }).format(client.hourly_rate ?? 0)}
+                          /h
+                        </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-1">
                             <Button
@@ -671,6 +690,20 @@ export function GestioneManager() {
               autoFocus
             />
           </div>
+          {entityDialog.kind === "client" && (
+            <div className="space-y-2">
+              <Label htmlFor="entity-hourly-rate">Tariffa Oraria Predefinita (€/h)</Label>
+              <Input
+                id="entity-hourly-rate"
+                type="number"
+                step="0.50"
+                min={0}
+                value={entityDialog.hourlyRate}
+                onChange={(e) => setEntityDialog((p) => ({ ...p, hourlyRate: e.target.value }))}
+                placeholder="Es. 25,00"
+              />
+            </div>
+          )}
           <DialogFooter className="flex-col-reverse sm:flex-row sm:justify-end gap-2">
             <Button variant="outline" onClick={() => setEntityDialog((p) => ({ ...p, open: false }))} className="w-full sm:w-auto min-h-[44px]">
               Annulla
