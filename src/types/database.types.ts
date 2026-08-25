@@ -94,6 +94,7 @@ export type Database = {
           start_time: string
           end_time: string
           observation: string | null
+          created_by: string | null
         }
         Insert: {
           id?: string
@@ -102,6 +103,7 @@ export type Database = {
           start_time: string
           end_time: string
           observation?: string | null
+          created_by?: string | null
         }
         Update: {
           id?: string
@@ -110,6 +112,7 @@ export type Database = {
           start_time?: string
           end_time?: string
           observation?: string | null
+          created_by?: string | null
         }
         Relationships: [
           {

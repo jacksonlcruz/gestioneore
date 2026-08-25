@@ -262,14 +262,21 @@ export function InsertionForm() {
         start_time: values.startTime,
         end_time: values.endTime,
         observation: values.observation || null,
+        created_by: currentUserProfile?.id ?? null,
       })
       .select()
       .single()
 
     if (recordError || !record) {
+      console.error("Errore Supabase Insert (service_records):", {
+        message: recordError?.message,
+        details: recordError?.details,
+        hint: recordError?.hint,
+        code: recordError?.code,
+      })
       toast.add({
-        title: "Errore",
-        description: "Si è verificato un errore durante il salvataggio",
+        title: "Errore durante il salvataggio",
+        description: recordError?.message || "Si è verificato un errore durante la registrazione.",
         type: "error",
       })
       setIsSubmitting(false)
@@ -294,9 +301,15 @@ export function InsertionForm() {
       .insert(participants)
 
     if (participantsInsertError) {
+      console.error("Errore Supabase Insert (service_participants):", {
+        message: participantsInsertError.message,
+        details: participantsInsertError.details,
+        hint: participantsInsertError.hint,
+        code: participantsInsertError.code,
+      })
       toast.add({
-        title: "Errore",
-        description: "Si è verificato un errore durante il salvataggio",
+        title: "Errore durante il salvataggio",
+        description: participantsInsertError.message || "Si è verificato un errore durante la registrazione.",
         type: "error",
       })
       setIsSubmitting(false)
