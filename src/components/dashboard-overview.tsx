@@ -3,10 +3,8 @@
 import { useEffect, useMemo, useState } from "react"
 import {
   Building2,
-  CalendarDays,
   Clock,
   Euro,
-  TrendingUp,
   UserCheck,
   Users,
 } from "lucide-react"

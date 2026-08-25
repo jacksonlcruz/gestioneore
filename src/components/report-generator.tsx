@@ -490,7 +490,7 @@ export function ReportGenerator() {
         .eq("id", user.id)
         .single()
       if (profile) {
-        setIsAdmin(profile.role === "admin")
+        setIsAdmin(profile.role?.toLowerCase() === "admin")
       }
     }
     loadUser()

@@ -151,7 +151,7 @@ export function RegistroList() {
         .eq("id", user.id)
         .single()
       if (!cancelled && profile) {
-        setIsAdmin(profile.role === "admin")
+        setIsAdmin(profile.role?.toLowerCase() === "admin")
       }
     }
     loadUser()

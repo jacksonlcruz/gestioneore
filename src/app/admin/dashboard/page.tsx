@@ -28,7 +28,7 @@ export default function AdminDashboardPage() {
         .eq("id", user.id)
         .single()
 
-      if (profile?.role !== "admin") {
+      if (profile?.role?.toLowerCase() !== "admin") {
         router.push("/")
         return
       }
