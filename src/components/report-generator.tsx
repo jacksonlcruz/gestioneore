@@ -714,12 +714,18 @@ export function ReportGenerator() {
       </div>
 
       <Tabs defaultValue="employee">
-        <TabsList className="w-full md:w-auto rounded-xl p-1 bg-muted/50">
-          <TabsTrigger value="employee" className="flex-1 md:flex-none rounded-lg data-[state=active]:shadow-sm">
+        <TabsList className="w-full md:w-auto rounded-xl p-1 bg-slate-100/80">
+          <TabsTrigger
+            value="employee"
+            className="flex-1 md:flex-none rounded-lg text-sm font-medium transition-all duration-150 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:shadow-sm data-[state=active]:border-blue-600 data-[state=inactive]:bg-slate-100 data-[state=inactive]:text-slate-600 data-[state=inactive]:border-transparent data-[state=inactive]:hover:bg-slate-200"
+          >
             <User className="h-4 w-4" />
             Report per Dipendente / Collaboratore
           </TabsTrigger>
-          <TabsTrigger value="client" className="flex-1 md:flex-none rounded-lg data-[state=active]:shadow-sm">
+          <TabsTrigger
+            value="client"
+            className="flex-1 md:flex-none rounded-lg text-sm font-medium transition-all duration-150 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:shadow-sm data-[state=active]:border-emerald-600 data-[state=inactive]:bg-slate-100 data-[state=inactive]:text-slate-600 data-[state=inactive]:border-transparent data-[state=inactive]:hover:bg-slate-200"
+          >
             <Building2 className="h-4 w-4" />
             Report per Cliente
           </TabsTrigger>
@@ -727,8 +733,13 @@ export function ReportGenerator() {
 
         {/* Employee tab */}
         <TabsContent value="employee" className="space-y-4">
-          <Card className="shadow-md border-border/50 rounded-2xl">
+          <Card className="shadow-md border-border/50 rounded-2xl border-t-4 border-t-blue-600">
             <CardHeader className="pb-4">
+              <div className="flex items-center gap-2">
+                <Badge variant="team" className="rounded-lg text-xs font-semibold uppercase tracking-wide">
+                  Report Dipendenti
+                </Badge>
+              </div>
               <CardTitle className="text-base">Filtri Report</CardTitle>
               <CardDescription>
                 Seleziona tipo di periodo e lavoratori per generare il report
@@ -993,8 +1004,13 @@ export function ReportGenerator() {
 
         {/* Client tab */}
         <TabsContent value="client" className="space-y-4">
-          <Card className="shadow-md border-border/50 rounded-2xl">
+          <Card className="shadow-md border-border/50 rounded-2xl border-t-4 border-t-emerald-600">
             <CardHeader className="pb-4">
+              <div className="flex items-center gap-2">
+                <Badge variant="success" className="rounded-lg text-xs font-semibold uppercase tracking-wide">
+                  Report Clienti
+                </Badge>
+              </div>
               <CardTitle className="text-base">Filtri Report Cliente</CardTitle>
               <CardDescription>
                 Seleziona tipo de periodo e clienti per generare il report
