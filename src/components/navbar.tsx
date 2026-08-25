@@ -33,8 +33,9 @@ export function Navbar() {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
+    const supabase = createClient()
+
     const loadUser = async () => {
-      const supabase = createClient()
       const {
         data: { user },
       } = await supabase.auth.getUser()
@@ -47,12 +48,29 @@ export function Navbar() {
         if (profile) {
           setUserName(profile.full_name ?? user.email ?? null)
           setUserRole(profile.role)
-          setIsAdmin(profile.role === "admin")
+          setIsAdmin(profile.role?.toLowerCase() === "admin")
         }
       }
       setIsLoading(false)
     }
+
     loadUser()
+
+    // Escuta mudanças de autenticação (login/logout/refresh)
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        loadUser()
+      } else {
+        setUserName(null)
+        setUserRole(null)
+        setIsAdmin(false)
+        setIsLoading(false)
+      }
+    })
+
+    return () => {
+      authListener?.subscription.unsubscribe()
+    }
   }, [])
 
   // Enquanto carrega, não mostrar links admin
