@@ -116,34 +116,43 @@ export function DashboardOverview() {
     let cancelled = false
     const run = async () => {
       setLoading(true)
-      const [year, month] = selectedMonth.split("-")
-      const startDate = `${year}-${month}-01`
-      const endDate = new Date(Number(year), Number(month), 0)
-      const endDateStr = `${year}-${month}-${String(endDate.getDate()).padStart(2, "0")}`
 
-      const [recordsRes, extraCostsRes] = await Promise.all([
-        supabase
-          .from("service_records")
-          .select(
-            "*, clients(name, hourly_rate), service_participants(worker_type, profile_id, freelancer_id, profiles(full_name, role), freelancers(name))"
-          )
-          .gte("date", startDate)
-          .lte("date", endDateStr)
-          .order("date", { ascending: true }),
-        supabase
-          .from("extra_costs")
-          .select("*, clients(name)")
-          .gte("date", startDate)
-          .lte("date", endDateStr)
-          .order("date", { ascending: true }),
-      ])
+      // Cálculo exato do intervalo de datas evitando parsing UTC/local
+      const [year, month] = selectedMonth.split("-").map(Number)
+      const lastDay = new Date(year, month, 0).getDate()
+      const startDate = `${selectedMonth}-01`
+      const endDate = `${selectedMonth}-${String(lastDay).padStart(2, "0")}`
+
+      const { data: records, error: recordsError } = await supabase
+        .from("service_records")
+        .select(
+          "*, clients(name, hourly_rate), service_participants(worker_type, profile_id, freelancer_id, profiles(full_name, role), freelancers(name))"
+        )
+        .gte("date", startDate)
+        .lte("date", endDate)
 
       if (cancelled) return
-      if (!recordsRes.error && recordsRes.data) {
-        setRecords(recordsRes.data as ServiceRecord[])
+
+      const { data: extraCosts, error: extraCostsError } = await supabase
+        .from("extra_costs")
+        .select("*, clients(name)")
+        .gte("date", startDate)
+        .lte("date", endDate)
+
+      if (cancelled) return
+
+      console.log("Dashboard fetch params:", {
+        startDate,
+        endDate,
+        recordsCount: records?.length,
+        extraCostsCount: extraCosts?.length,
+      })
+
+      if (!recordsError && records) {
+        setRecords(records as ServiceRecord[])
       }
-      if (!extraCostsRes.error && extraCostsRes.data) {
-        setExtraCosts(extraCostsRes.data as ExtraCost[])
+      if (!extraCostsError && extraCosts) {
+        setExtraCosts(extraCosts as ExtraCost[])
       }
       setLoading(false)
     }
