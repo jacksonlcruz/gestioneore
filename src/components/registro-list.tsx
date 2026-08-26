@@ -51,11 +51,20 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs"
 import { toast } from "@/components/ui/toast"
 
 type Client = Database["public"]["Tables"]["clients"]["Row"]
 type Profile = Database["public"]["Tables"]["profiles"]["Row"]
 type Freelancer = Database["public"]["Tables"]["freelancers"]["Row"]
+type ExtraCost = Database["public"]["Tables"]["extra_costs"]["Row"] & {
+  clients: { name: string } | null
+}
 
 type Worker = {
   id: string
@@ -98,6 +107,13 @@ function calculateDuration(start: string, end: string): string {
   return `${min} min`
 }
 
+function formatCurrency(value: number): string {
+  return new Intl.NumberFormat("it-IT", {
+    style: "currency",
+    currency: "EUR",
+  }).format(value)
+}
+
 function participantName(p: Participant): string {
   if (p.worker_type === "employee") {
     return p.profiles?.full_name ?? "Dipendente"
@@ -109,6 +125,7 @@ export function RegistroList() {
   const supabase = useMemo(() => createClient(), [])
 
   const [records, setRecords] = useState<ServiceRecord[]>([])
+  const [extraCosts, setExtraCosts] = useState<ExtraCost[]>([])
   const [clients, setClients] = useState<Client[]>([])
   const [loaded, setLoaded] = useState(false)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
@@ -125,6 +142,9 @@ export function RegistroList() {
 
   const [deleteTarget, setDeleteTarget] = useState<ServiceRecord | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+
+  const [deleteExtraCostTarget, setDeleteExtraCostTarget] = useState<ExtraCost | null>(null)
+  const [isDeletingExtraCost, setIsDeletingExtraCost] = useState(false)
 
   const [editTarget, setEditTarget] = useState<ServiceRecord | null>(null)
   const [isSaving, setIsSaving] = useState(false)
@@ -249,6 +269,52 @@ export function RegistroList() {
     }
   }, [supabase, currentUserId, isAdmin, filterClientId, filterStartDate, filterEndDate, filterParticipantId])
 
+  // Load extra costs whenever filters change (admin sees all, employees see none by design - extra costs are client-billing only)
+  useEffect(() => {
+    if (!currentUserId || !isAdmin) {
+      setExtraCosts([])
+      return
+    }
+
+    let cancelled = false
+
+    const run = async () => {
+      let query = supabase
+        .from("extra_costs")
+        .select("*, clients(name)")
+        .order("date", { ascending: false })
+
+      if (filterClientId) {
+        query = query.eq("client_id", filterClientId)
+      }
+      if (filterStartDate) {
+        query = query.gte("date", filterStartDate)
+      }
+      if (filterEndDate) {
+        query = query.lte("date", filterEndDate)
+      }
+
+      const { data, error } = await query
+
+      if (cancelled) return
+
+      if (error) {
+        toast.add({
+          title: "Errore",
+          description: "Impossibile caricare i costi extra",
+          type: "error",
+        })
+      } else {
+        setExtraCosts((data ?? []) as ExtraCost[])
+      }
+    }
+
+    run()
+    return () => {
+      cancelled = true
+    }
+  }, [supabase, currentUserId, isAdmin, filterClientId, filterStartDate, filterEndDate])
+
   const workers: Worker[] = useMemo(() => {
     const employeeWorkers = profiles
       .filter((p) => p.full_name)
@@ -275,6 +341,15 @@ export function RegistroList() {
       (r.observation ?? "").toLowerCase().includes(searchLower)
     )
   }, [records, filterSearchText])
+
+  // Apply description search filter client-side for extra costs
+  const filteredExtraCosts = useMemo(() => {
+    if (!filterSearchText) return extraCosts
+    const searchLower = filterSearchText.toLowerCase()
+    return extraCosts.filter((c) =>
+      (c.description ?? "").toLowerCase().includes(searchLower)
+    )
+  }, [extraCosts, filterSearchText])
 
   function clearFilters() {
     setFilterClientId("")
@@ -376,16 +451,42 @@ export function RegistroList() {
     setDeleteTarget(null)
   }
 
+  async function handleDeleteExtraCost() {
+    if (!deleteExtraCostTarget) return
+
+    setIsDeletingExtraCost(true)
+    const { error } = await supabase
+      .from("extra_costs")
+      .delete()
+      .eq("id", deleteExtraCostTarget.id)
+
+    if (error) {
+      toast.add({
+        title: "Errore",
+        description: "Impossibile eliminare il costo extra",
+        type: "error",
+      })
+    } else {
+      toast.add({
+        title: "Costo extra eliminato con successo",
+        type: "success",
+      })
+      setExtraCosts((prev) => prev.filter((c) => c.id !== deleteExtraCostTarget.id))
+    }
+    setIsDeletingExtraCost(false)
+    setDeleteExtraCostTarget(null)
+  }
+
   const hasFilters = filterClientId || filterStartDate || filterEndDate || filterParticipantId || filterSearchText
   const showEmptyState = loaded && filteredRecords.length === 0
 
   return (
-    <div className="mx-auto w-full max-w-4xl space-y-6">
+    <div className="mx-auto w-full max-w-6xl space-y-6">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold md:text-3xl">Registro Ore</h1>
         <p className="text-muted-foreground">
-          Consulta e gestisci le ore lavorative registrate
+          Consulta e gestisci le ore lavorative registrate e i costi extra
         </p>
       </div>
 
@@ -449,7 +550,7 @@ export function RegistroList() {
             </div>
 
             <div className="space-y-2 sm:col-span-2 lg:col-span-4">
-              <Label htmlFor="search-notes" className="text-sm font-medium">Cerca nelle note</Label>
+              <Label htmlFor="search-notes" className="text-sm font-medium">Cerca nelle note o descrizioni</Label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
@@ -457,7 +558,7 @@ export function RegistroList() {
                   type="text"
                   value={filterSearchText}
                   onChange={(e) => setFilterSearchText(e.target.value)}
-                  placeholder="Cerca nelle note..."
+                  placeholder="Cerca nelle note o descrizioni..."
                   className="rounded-lg h-12 pl-9"
                 />
               </div>
@@ -475,160 +576,65 @@ export function RegistroList() {
         </CardContent>
       </Card>
 
-      {/* Lista Registrazioni */}
-      {!loaded ? (
-        <p className="text-center text-muted-foreground py-8">
-          Caricamento registrazioni...
-        </p>
-      ) : showEmptyState ? (
-        <Card className="shadow-md border-border/50 rounded-2xl">
-          <CardContent className="flex flex-col items-center gap-2 py-12 text-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted">
-              <CalendarDays className="h-7 w-7 text-muted-foreground" />
-            </div>
-            <p className="text-muted-foreground">
-              Nessun registro di lavoro trovato.
+      <Tabs defaultValue="ore">
+        <TabsList className="flex flex-col sm:flex-row w-full sm:w-auto bg-slate-100 p-1.5 rounded-xl border border-slate-200/80 sm:inline-flex gap-1.5 h-auto">
+          <TabsTrigger
+            value="ore"
+            className="w-full sm:w-auto justify-center rounded-lg px-4 py-2.5 text-xs sm:text-sm font-medium transition-all duration-150 data-active:!bg-blue-600 data-active:!text-white data-active:!shadow-md !bg-transparent !text-slate-600 hover:bg-slate-200/60 flex items-center gap-2"
+          >
+            <Clock className="h-4 w-4 data-active:!text-white shrink-0" />
+            <span>Registro Ore</span>
+          </TabsTrigger>
+          <TabsTrigger
+            value="extra"
+            className="w-full sm:w-auto justify-center rounded-lg px-4 py-2.5 text-xs sm:text-sm font-medium transition-all duration-150 data-active:!bg-amber-600 data-active:!text-white data-active:!shadow-md !bg-transparent !text-slate-600 hover:bg-slate-200/60 flex items-center gap-2"
+          >
+            <CalendarDays className="h-4 w-4 data-active:!text-white shrink-0" />
+            <span>Costi Extra e Materiali</span>
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Ore tab */}
+        <TabsContent value="ore" className="space-y-4">
+          {/* Lista Registrazioni */}
+          {!loaded ? (
+            <p className="text-center text-muted-foreground py-8">
+              Caricamento registrazioni...
             </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <>
-          {/* Mobile: Cards */}
-          <div className="space-y-3 md:hidden">
-            {filteredRecords.map((record) => (
-              <Card key={record.id} className="shadow-sm border-border/50 rounded-xl overflow-hidden">
-                <CardContent className="space-y-3 pt-4">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="space-y-1">
-                      <p className="font-semibold text-[15px]">{record.clients?.name}</p>
-                      <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                        <CalendarDays className="h-3.5 w-3.5" />
-                        {formatDate(record.date)}
-                      </div>
-                    </div>
-                    {canManage(record) && (
-                      <div className="flex gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => openEditDialog(record)}
-                          aria-label="Modifica registrazione"
-                          className="rounded-lg min-h-[44px] min-w-[44px]"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setDeleteTarget(record)}
-                          aria-label="Elimina registrazione"
-                          className="text-destructive rounded-lg min-h-[44px] min-w-[44px]"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-2 rounded-lg bg-muted/40 px-3 py-2">
-                    <Clock className="h-4 w-4 text-primary" />
-                    <p className="text-sm font-medium">
-                      {formatTime(record.start_time)} - {formatTime(record.end_time)}{" "}
-                      <span className="text-muted-foreground font-normal">
-                        ({calculateDuration(record.start_time, record.end_time)})
-                      </span>
-                    </p>
-                  </div>
-
-                  {record.service_participants.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5">
-                      {record.service_participants.map((p) => (
-                        <Badge
-                          key={p.id}
-                          variant={p.worker_type === "employee" ? "team" : "freelancer"}
-                          className="rounded-lg text-xs font-normal"
-                        >
-                          {participantName(p)}
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
-
-                  {record.observation && (
-                    <p className="text-sm text-muted-foreground border-t border-border/40 pt-2">
-                      {record.observation}
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          {/* Desktop: Table */}
-          <Card className="hidden md:block shadow-md border-border/50 rounded-2xl overflow-hidden">
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/50 hover:bg-muted/50">
-                    <TableHead className="font-semibold">Data</TableHead>
-                    <TableHead className="font-semibold">Cliente</TableHead>
-                    <TableHead className="font-semibold">Orario</TableHead>
-                    <TableHead className="font-semibold">Partecipanti</TableHead>
-                    <TableHead className="font-semibold">Note</TableHead>
-                    <TableHead className="w-[100px] text-right font-semibold">Azioni</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredRecords.map((record, index) => (
-                    <TableRow key={record.id} className={index % 2 === 1 ? "bg-muted/20" : ""}>
-                      <TableCell className="whitespace-nowrap">
-                        {formatDate(record.date)}
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        {record.clients?.name}
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap">
-                        {formatTime(record.start_time)} -{" "}
-                        {formatTime(record.end_time)}
-                        <span className="block text-xs text-muted-foreground">
-                          {calculateDuration(record.start_time, record.end_time)}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap gap-1.5">
-                          {record.service_participants.length > 0 ? (
-                            record.service_participants.map((p) => (
-                              <Badge
-                                key={p.id}
-                                variant={p.worker_type === "employee" ? "team" : "freelancer"}
-                                className="rounded-lg text-xs font-normal"
-                              >
-                                {participantName(p)}
-                              </Badge>
-                            ))
-                          ) : (
-                            <span className="text-xs text-muted-foreground">
-                              Nessun partecipante
-                            </span>
-                          )}
+          ) : showEmptyState ? (
+            <Card className="shadow-md border-border/50 rounded-2xl">
+              <CardContent className="flex flex-col items-center gap-2 py-12 text-center">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted">
+                  <CalendarDays className="h-7 w-7 text-muted-foreground" />
+                </div>
+                <p className="text-muted-foreground">
+                  Nessun registro di lavoro trovato.
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              {/* Mobile: Cards */}
+              <div className="space-y-3 md:hidden">
+                {filteredRecords.map((record) => (
+                  <Card key={record.id} className="shadow-sm border-border/50 rounded-xl overflow-hidden">
+                    <CardContent className="space-y-3 pt-4">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="space-y-1">
+                          <p className="font-semibold text-[15px]">{record.clients?.name}</p>
+                          <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                            <CalendarDays className="h-3.5 w-3.5" />
+                            {formatDate(record.date)}
+                          </div>
                         </div>
-                      </TableCell>
-                      <TableCell className="max-w-[200px] truncate">
-                        {record.observation || (
-                          <span className="text-xs text-muted-foreground">
-                            —
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
                         {canManage(record) && (
-                          <div className="flex justify-end gap-1">
+                          <div className="flex gap-1">
                             <Button
                               variant="ghost"
                               size="icon"
                               onClick={() => openEditDialog(record)}
                               aria-label="Modifica registrazione"
-                              className="rounded-lg"
+                              className="rounded-lg min-h-[44px] min-w-[44px]"
                             >
                               <Pencil className="h-4 w-4" />
                             </Button>
@@ -637,21 +643,245 @@ export function RegistroList() {
                               size="icon"
                               onClick={() => setDeleteTarget(record)}
                               aria-label="Elimina registrazione"
-                              className="text-destructive rounded-lg"
+                              className="text-destructive rounded-lg min-h-[44px] min-w-[44px]"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
                         )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </>
-      )}
+                      </div>
+
+                      <div className="flex items-center gap-2 rounded-lg bg-muted/40 px-3 py-2">
+                        <Clock className="h-4 w-4 text-primary" />
+                        <p className="text-sm font-medium">
+                          {formatTime(record.start_time)} - {formatTime(record.end_time)}{" "}
+                          <span className="text-muted-foreground font-normal">
+                            ({calculateDuration(record.start_time, record.end_time)})
+                          </span>
+                        </p>
+                      </div>
+
+                      {record.service_participants.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5">
+                          {record.service_participants.map((p) => (
+                            <Badge
+                              key={p.id}
+                              variant={p.worker_type === "employee" ? "team" : "freelancer"}
+                              className="rounded-lg text-xs font-normal"
+                            >
+                              {participantName(p)}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+
+                      {record.observation && (
+                        <p className="text-sm text-muted-foreground border-t border-border/40 pt-2">
+                          {record.observation}
+                        </p>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              {/* Desktop: Table */}
+              <Card className="hidden md:block shadow-md border-border/50 rounded-2xl overflow-hidden">
+                <CardContent className="p-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/50 hover:bg-muted/50">
+                        <TableHead className="font-semibold">Data</TableHead>
+                        <TableHead className="font-semibold">Cliente</TableHead>
+                        <TableHead className="font-semibold">Orario</TableHead>
+                        <TableHead className="font-semibold">Partecipanti</TableHead>
+                        <TableHead className="font-semibold">Note</TableHead>
+                        <TableHead className="w-[100px] text-right font-semibold">Azioni</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredRecords.map((record, index) => (
+                        <TableRow key={record.id} className={index % 2 === 1 ? "bg-muted/20" : ""}>
+                          <TableCell className="whitespace-nowrap">
+                            {formatDate(record.date)}
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            {record.clients?.name}
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap">
+                            {formatTime(record.start_time)} -{" "}
+                            {formatTime(record.end_time)}
+                            <span className="block text-xs text-muted-foreground">
+                              {calculateDuration(record.start_time, record.end_time)}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-wrap gap-1.5">
+                              {record.service_participants.length > 0 ? (
+                                record.service_participants.map((p) => (
+                                  <Badge
+                                    key={p.id}
+                                    variant={p.worker_type === "employee" ? "team" : "freelancer"}
+                                    className="rounded-lg text-xs font-normal"
+                                  >
+                                    {participantName(p)}
+                                  </Badge>
+                                ))
+                              ) : (
+                                <span className="text-xs text-muted-foreground">
+                                  Nessun partecipante
+                                </span>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="max-w-[200px] truncate">
+                            {record.observation || (
+                              <span className="text-xs text-muted-foreground">
+                                —
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {canManage(record) && (
+                              <div className="flex justify-end gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => openEditDialog(record)}
+                                  aria-label="Modifica registrazione"
+                                  className="rounded-lg"
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => setDeleteTarget(record)}
+                                  aria-label="Elimina registrazione"
+                                  className="text-destructive rounded-lg"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </>
+          )}
+        </TabsContent>
+
+        {/* Extra Costs tab */}
+        <TabsContent value="extra" className="space-y-4">
+          {!isAdmin ? (
+            <Card className="shadow-md border-border/50 rounded-2xl">
+              <CardContent className="flex flex-col items-center gap-2 py-12 text-center">
+                <p className="text-muted-foreground">
+                  Solo gli amministratori possono visualizzare i costi extra.
+                </p>
+              </CardContent>
+            </Card>
+          ) : filteredExtraCosts.length === 0 ? (
+            <Card className="shadow-md border-border/50 rounded-2xl">
+              <CardContent className="flex flex-col items-center gap-2 py-12 text-center">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted">
+                  <CalendarDays className="h-7 w-7 text-muted-foreground" />
+                </div>
+                <p className="text-muted-foreground">
+                  Nessun costo extra trovato.
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              {/* Mobile: Cards */}
+              <div className="space-y-3 md:hidden">
+                {filteredExtraCosts.map((cost) => (
+                  <Card key={cost.id} className="shadow-sm border-border/50 rounded-xl overflow-hidden">
+                    <CardContent className="space-y-3 pt-4">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="space-y-1">
+                          <p className="font-semibold text-[15px]">{cost.clients?.name}</p>
+                          <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                            <CalendarDays className="h-3.5 w-3.5" />
+                            {formatDate(cost.date)}
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setDeleteExtraCostTarget(cost)}
+                          aria-label="Elimina costo extra"
+                          className="text-destructive rounded-lg min-h-[44px] min-w-[44px]"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+
+                      <div className="rounded-lg bg-amber-50 dark:bg-amber-950/20 px-3 py-2 border border-amber-200 dark:border-amber-800/40">
+                        <p className="text-sm font-medium">{cost.description}</p>
+                        <p className="text-sm font-bold text-amber-700 dark:text-amber-400">
+                          {formatCurrency(Number(cost.amount))}
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              {/* Desktop: Table */}
+              <Card className="hidden md:block shadow-md border-border/50 rounded-2xl overflow-hidden">
+                <CardContent className="p-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/50 hover:bg-muted/50">
+                        <TableHead className="font-semibold">Data</TableHead>
+                        <TableHead className="font-semibold">Cliente</TableHead>
+                        <TableHead className="font-semibold">Descrizione</TableHead>
+                        <TableHead className="font-semibold text-right">Importo (€)</TableHead>
+                        <TableHead className="w-[80px] text-right font-semibold">Azioni</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredExtraCosts.map((cost, index) => (
+                        <TableRow key={cost.id} className={index % 2 === 1 ? "bg-muted/20" : ""}>
+                          <TableCell className="whitespace-nowrap">
+                            {formatDate(cost.date)}
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            {cost.clients?.name}
+                          </TableCell>
+                          <TableCell>
+                            {cost.description}
+                          </TableCell>
+                          <TableCell className="text-right font-semibold">
+                            {formatCurrency(Number(cost.amount))}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setDeleteExtraCostTarget(cost)}
+                              aria-label="Elimina costo extra"
+                              className="text-destructive rounded-lg"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </>
+          )}
+        </TabsContent>
+      </Tabs>
 
       {/* Dialog di modifica */}
       <Dialog
@@ -750,7 +980,7 @@ export function RegistroList() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog di conferma eliminazione */}
+      {/* Dialog di conferma eliminazione registro */}
       <AlertDialog
         open={deleteTarget !== null}
         onOpenChange={(open) => {
@@ -773,6 +1003,34 @@ export function RegistroList() {
               className="w-full sm:w-auto min-h-[44px]"
             >
               {isDeleting ? "Eliminazione..." : "Conferma"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Dialog di conferma eliminazione costo extra */}
+      <AlertDialog
+        open={deleteExtraCostTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteExtraCostTarget(null)
+        }}
+      >
+        <AlertDialogContent className="w-[95vw] max-w-lg">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Conferma eliminazione</AlertDialogTitle>
+            <AlertDialogDescription>
+              {`Sei sicuro di voler eliminare questo costo extra? L'azione non può essere annullata.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col-reverse sm:flex-row sm:justify-end gap-2">
+            <AlertDialogCancel className="w-full sm:w-auto min-h-[44px]">Annulla</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={handleDeleteExtraCost}
+              disabled={isDeletingExtraCost}
+              className="w-full sm:w-auto min-h-[44px]"
+            >
+              {isDeletingExtraCost ? "Eliminazione..." : "Conferma"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

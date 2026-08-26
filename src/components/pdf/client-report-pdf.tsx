@@ -6,6 +6,12 @@ import {
   StyleSheet,
 } from "@react-pdf/renderer"
 
+export type ExtraCostRow = {
+  date: string
+  description: string
+  amount: number
+}
+
 export type ClientReportRow = {
   date: string
   participants: string[]
@@ -19,6 +25,7 @@ export type ClientReportData = {
   clientName: string
   periodLabel: string
   rows: ClientReportRow[]
+  extraCosts: ExtraCostRow[]
 }
 
 type ClientReportPDFProps = {
@@ -70,6 +77,31 @@ const styles = StyleSheet.create({
   colParticipants: { width: "30%" },
   colTime: { width: "22%" },
   colNote: { width: "36%" },
+  extraCostHeader: {
+    flexDirection: "row",
+    borderBottomWidth: 1,
+    borderBottomColor: "#000",
+    paddingVertical: 4,
+    fontSize: 9,
+    fontWeight: "bold",
+    backgroundColor: "#fef3c7",
+  },
+  extraCostRow: {
+    flexDirection: "row",
+    borderBottomWidth: 0.5,
+    borderBottomColor: "#ccc",
+    paddingVertical: 4,
+    fontSize: 9,
+  },
+  extraCostColDate: { width: "20%" },
+  extraCostColDesc: { width: "55%" },
+  extraCostColAmount: { width: "25%", textAlign: "right" },
+  extraCostSectionTitle: {
+    fontSize: 11,
+    fontWeight: "bold",
+    marginTop: 20,
+    marginBottom: 8,
+  },
   footer: {
     marginTop: 24,
     fontSize: 12,
@@ -100,9 +132,20 @@ function formatDuration(totalDecimal: number): string {
   return `${decimalFormatted} ore (${clockFormatted})`
 }
 
+function formatEuro(value: number): string {
+  return new Intl.NumberFormat("it-IT", {
+    style: "currency",
+    currency: "EUR",
+  }).format(value)
+}
+
 function ClientPage({ data }: { data: ClientReportData }) {
   const totalHours = data.rows.reduce(
     (sum, row) => sum + row.durationHours,
+    0
+  )
+  const totalExtraCosts = data.extraCosts.reduce(
+    (sum, cost) => sum + cost.amount,
     0
   )
 
@@ -114,35 +157,66 @@ function ClientPage({ data }: { data: ClientReportData }) {
         <Text style={styles.meta}>{data.periodLabel}</Text>
       </View>
 
-      {data.rows.length === 0 ? (
+      {data.rows.length === 0 && data.extraCosts.length === 0 ? (
         <Text style={styles.emptyState}>
           Nessuna registrazione trovata per il periodo selezionato.
         </Text>
       ) : (
         <>
-          <View style={styles.tableHeader}>
-            <Text style={styles.colDate}>Data</Text>
-            <Text style={styles.colParticipants}>Partecipanti</Text>
-            <Text style={styles.colTime}>Orario / Durata</Text>
-            <Text style={styles.colNote}>Note / Ubicazione</Text>
-          </View>
+          {data.rows.length > 0 && (
+            <>
+              <View style={styles.tableHeader}>
+                <Text style={styles.colDate}>Data</Text>
+                <Text style={styles.colParticipants}>Partecipanti</Text>
+                <Text style={styles.colTime}>Orario / Durata</Text>
+                <Text style={styles.colNote}>Note / Ubicazione</Text>
+              </View>
 
-          {data.rows.map((row, index) => (
-            <View key={index} style={styles.tableRow}>
-              <Text style={styles.colDate}>{row.date}</Text>
-              <Text style={styles.colParticipants}>
-                {row.participants.join(", ")}
-              </Text>
-              <Text style={styles.colTime}>
-                {row.startTime} - {row.endTime} ({row.durationHours.toFixed(2)} ore)
-              </Text>
-              <Text style={styles.colNote}>{row.observation || "-"}</Text>
-            </View>
-          ))}
+              {data.rows.map((row, index) => (
+                <View key={`row-${index}`} style={styles.tableRow}>
+                  <Text style={styles.colDate}>{row.date}</Text>
+                  <Text style={styles.colParticipants}>
+                    {row.participants.join(", ")}
+                  </Text>
+                  <Text style={styles.colTime}>
+                    {row.startTime} - {row.endTime} ({row.durationHours.toFixed(2)} ore)
+                  </Text>
+                  <Text style={styles.colNote}>{row.observation || "-"}</Text>
+                </View>
+              ))}
 
-          <Text style={styles.footer}>
-            Totale Ore Servizio nel Periodo: {formatDuration(totalHours)}
-          </Text>
+              <Text style={styles.footer}>
+                Totale Ore Servizio nel Periodo: {formatDuration(totalHours)}
+              </Text>
+            </>
+          )}
+
+          {data.extraCosts.length > 0 && (
+            <>
+              <Text style={styles.extraCostSectionTitle}>
+                Costi Extra / Materiali
+              </Text>
+              <View style={styles.extraCostHeader}>
+                <Text style={styles.extraCostColDate}>Data</Text>
+                <Text style={styles.extraCostColDesc}>Descrizione</Text>
+                <Text style={styles.extraCostColAmount}>Importo (€)</Text>
+              </View>
+
+              {data.extraCosts.map((cost, index) => (
+                <View key={`extra-${index}`} style={styles.extraCostRow}>
+                  <Text style={styles.extraCostColDate}>{cost.date}</Text>
+                  <Text style={styles.extraCostColDesc}>{cost.description}</Text>
+                  <Text style={styles.extraCostColAmount}>
+                    {formatEuro(cost.amount)}
+                  </Text>
+                </View>
+              ))}
+
+              <Text style={styles.footer}>
+                Totale Costi Extra: {formatEuro(totalExtraCosts)}
+              </Text>
+            </>
+          )}
         </>
       )}
     </Page>

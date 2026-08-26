@@ -40,20 +40,41 @@ const formSchema = z
   .object({
     clientId: z.string().min(1, "Seleziona un cliente"),
     date: z.string().min(1, "Seleziona una data"),
-    startTime: z.string().min(1, "Seleziona l'ora di inizio"),
-    endTime: z.string().min(1, "Seleziona l'ora di fine"),
+    startTime: z.string().optional(),
+    endTime: z.string().optional(),
     observation: z.string().optional(),
+    extraCostDescription: z.string().optional(),
+    extraCostAmount: z.string().optional(),
   })
-  .refine(
-    (data) => {
-      if (!data.startTime || !data.endTime) return true
-      return data.endTime > data.startTime
-    },
-    {
-      path: ["endTime"],
-      message: "L'ora di fine deve essere successiva all'ora di inizio",
+  .superRefine((data, ctx) => {
+    // Validação dos horários (apenas no modo "Servizio Ore")
+    if (data.startTime && data.endTime && data.endTime <= data.startTime) {
+      ctx.addIssue({
+        path: ["endTime"],
+        message: "L'ora di fine deve essere successiva all'ora di inizio",
+        code: z.ZodIssueCode.custom,
+      })
     }
-  )
+
+    // Se informado um valor extra > 0, a descrição é obrigatória
+    const amount = data.extraCostAmount ? parseFloat(data.extraCostAmount) : 0
+    if (amount > 0 && !data.extraCostDescription?.trim()) {
+      ctx.addIssue({
+        path: ["extraCostDescription"],
+        message: "Inserisci una descrizione per il costo extra",
+        code: z.ZodIssueCode.custom,
+      })
+    }
+
+    // Se informada uma descrição, o importo é obrigatório e deve ser > 0
+    if (data.extraCostDescription?.trim() && amount <= 0) {
+      ctx.addIssue({
+        path: ["extraCostAmount"],
+        message: "Inserisci un importo valido",
+        code: z.ZodIssueCode.custom,
+      })
+    }
+  })
 
 type FormValues = z.infer<typeof formSchema>
 
@@ -74,8 +95,12 @@ function calculateDuration(start: string, end: string): string | null {
   return `${min} minuti`
 }
 
+type EntryMode = "hours" | "extra"
+
 export function InsertionForm() {
   const supabase = useMemo(() => createClient(), [])
+
+  const [entryMode, setEntryMode] = useState<EntryMode>("hours")
 
   const [clients, setClients] = useState<Client[]>([])
   const [employees, setEmployees] = useState<Profile[]>([])
@@ -100,11 +125,13 @@ export function InsertionForm() {
       startTime: "",
       endTime: "",
       observation: "",
+      extraCostDescription: "",
+      extraCostAmount: "",
     },
   })
 
-  const startTime = form.watch("startTime")
-  const endTime = form.watch("endTime")
+  const startTime = form.watch("startTime") ?? ""
+  const endTime = form.watch("endTime") ?? ""
   const duration = calculateDuration(startTime, endTime)
 
   useEffect(() => {
@@ -235,6 +262,70 @@ export function InsertionForm() {
   }
 
   async function handleSubmit(values: FormValues) {
+    // Modo "Solo Costo Extra": grava diretamente em extra_costs sem service_record
+    if (entryMode === "extra") {
+      const amount = values.extraCostAmount ? parseFloat(values.extraCostAmount) : 0
+      if (!values.extraCostDescription?.trim() || amount <= 0) {
+        toast.add({
+          title: "Errore",
+          description: "Inserisci una descrizione e un importo valido per il costo extra",
+          type: "error",
+        })
+        return
+      }
+
+      setIsSubmitting(true)
+
+      const { error } = await supabase.from("extra_costs").insert({
+        client_id: values.clientId,
+        date: values.date,
+        description: values.extraCostDescription.trim(),
+        amount,
+        service_record_id: null,
+        created_by: currentUserProfile?.id ?? null,
+      })
+
+      if (error) {
+        console.error("Errore Supabase Insert (extra_costs):", {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code,
+        })
+        toast.add({
+          title: "Errore durante il salvataggio",
+          description: error.message || "Si è verificato un errore durante la registrazione.",
+          type: "error",
+        })
+        setIsSubmitting(false)
+        return
+      }
+
+      toast.add({
+        title: "Costo Extra registrato con successo",
+        description: `"${values.extraCostDescription.trim()}" è stato aggiunto`,
+        type: "success",
+      })
+
+      form.reset({
+        clientId: "",
+        date: todayISO(),
+        startTime: "",
+        endTime: "",
+        observation: "",
+        extraCostDescription: "",
+        extraCostAmount: "",
+      })
+      setIsSubmitting(false)
+      return
+    }
+
+    // Modo "Servizio Ore": valida os horários obrigatórios
+    if (!values.startTime || !values.endTime) {
+      setParticipantsError("Seleziona l'ora di inizio e di fine")
+      return
+    }
+
     // Garantisce che il currentUserProfile sia sempre presente nei partecipanti
     const finalEmployeeIds = selectedEmployeeIds.includes(currentUserProfile?.id ?? "")
       ? selectedEmployeeIds
@@ -316,6 +407,35 @@ export function InsertionForm() {
       return
     }
 
+    // Se um custo extra foi informado, vincula ao service_record criado
+    const extraAmount = values.extraCostAmount ? parseFloat(values.extraCostAmount) : 0
+    if (extraAmount > 0 && values.extraCostDescription?.trim()) {
+      const { error: extraCostInsertError } = await supabase
+        .from("extra_costs")
+        .insert({
+          client_id: values.clientId,
+          date: values.date,
+          description: values.extraCostDescription.trim(),
+          amount: extraAmount,
+          service_record_id: record.id,
+          created_by: currentUserProfile?.id ?? null,
+        })
+
+      if (extraCostInsertError) {
+        console.error("Errore Supabase Insert (extra_costs):", {
+          message: extraCostInsertError.message,
+          details: extraCostInsertError.details,
+          hint: extraCostInsertError.hint,
+          code: extraCostInsertError.code,
+        })
+        toast.add({
+          title: "Errore durante il salvataggio",
+          description: extraCostInsertError.message || "Il servizio è stato salvato ma il costo extra non è stato registrato.",
+          type: "error",
+        })
+      }
+    }
+
     toast.add({
       title: "Ore registrate con successo",
       description: "Le ore lavorative sono state registrate",
@@ -328,6 +448,8 @@ export function InsertionForm() {
       startTime: "",
       endTime: "",
       observation: "",
+      extraCostDescription: "",
+      extraCostAmount: "",
     })
     // Mantiene l'utente logato preselezionato dopo il reset
     setSelectedEmployeeIds(currentUserProfile ? [currentUserProfile.id] : [])
@@ -347,7 +469,9 @@ export function InsertionForm() {
             Nuovo Inserimento
           </CardTitle>
           <CardDescription>
-            Registra le ore lavorative svolte per un cliente
+            {entryMode === "hours"
+              ? "Registra le ore lavorative svolte per un cliente"
+              : "Registra un costo extra o materiale per un cliente"}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -356,6 +480,31 @@ export function InsertionForm() {
               onSubmit={form.handleSubmit(handleSubmit)}
               className="space-y-6"
             >
+              {/* Modo di inserimento */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Tipo di Registrazione</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    type="button"
+                    variant={entryMode === "hours" ? "secondary" : "outline"}
+                    onClick={() => setEntryMode("hours")}
+                    className="rounded-xl h-12"
+                  >
+                    <Clock2 className="h-4 w-4" />
+                    Servizio Ore
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={entryMode === "extra" ? "secondary" : "outline"}
+                    onClick={() => setEntryMode("extra")}
+                    className="rounded-xl h-12"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Solo Costo Extra
+                  </Button>
+                </div>
+              </div>
+
               {/* Cliente */}
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Cliente</Label>
@@ -385,203 +534,305 @@ export function InsertionForm() {
                 )}
               </div>
 
-              {/* Data e Orari */}
-              <div className="rounded-xl bg-muted/30 p-4 space-y-4 border border-border/50">
-                <div className="space-y-2">
-                  <Label htmlFor="date" className="text-sm font-medium">Data</Label>
-                  <Input
-                    id="date"
-                    type="date"
-                    {...form.register("date")}
-                    className="rounded-lg h-12 text-base"
-                  />
-                  {form.formState.errors.date && (
-                    <p className="text-sm text-destructive">
-                      {form.formState.errors.date.message}
-                    </p>
-                  )}
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="start-time" className="text-sm font-medium">Ora Inizio</Label>
-                    <Input
-                      id="start-time"
-                      type="time"
-                      {...form.register("startTime")}
-                      className="rounded-lg h-12 text-base"
-                    />
-                    {form.formState.errors.startTime && (
-                      <p className="text-sm text-destructive">
-                        {form.formState.errors.startTime.message}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="end-time" className="text-sm font-medium">Ora Fine</Label>
-                    <Input
-                      id="end-time"
-                      type="time"
-                      {...form.register("endTime")}
-                      className="rounded-lg h-12 text-base"
-                    />
-                    {form.formState.errors.endTime && (
-                      <p className="text-sm text-destructive">
-                        {form.formState.errors.endTime.message}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                {duration && (
-                  <div className="flex items-center gap-2 rounded-lg bg-primary/10 px-3 py-2 text-sm font-medium text-primary">
-                    <Clock2 className="h-4 w-4" />
-                    Durata calcolata: {duration}
-                  </div>
+              {/* Data */}
+              <div className="space-y-2">
+                <Label htmlFor="date" className="text-sm font-medium">Data</Label>
+                <Input
+                  id="date"
+                  type="date"
+                  {...form.register("date")}
+                  className="rounded-lg h-12 text-base"
+                />
+                {form.formState.errors.date && (
+                  <p className="text-sm text-destructive">
+                    {form.formState.errors.date.message}
+                  </p>
                 )}
               </div>
 
-              {/* Lavoratore Principale */}
-              {currentUserProfile && (
-                <div className="rounded-xl bg-primary/5 p-4 space-y-2 border border-primary/20">
-                  <Label className="text-sm font-medium">Lavoratore Principale</Label>
-                  <div className="flex items-center gap-2">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
-                      <Users className="h-4 w-4 text-primary" />
+              {entryMode === "hours" && (
+                <>
+                  {/* Orari */}
+                  <div className="rounded-xl bg-muted/30 p-4 space-y-4 border border-border/50">
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="start-time" className="text-sm font-medium">Ora Inizio</Label>
+                        <Input
+                          id="start-time"
+                          type="time"
+                          {...form.register("startTime")}
+                          className="rounded-lg h-12 text-base"
+                        />
+                        {form.formState.errors.startTime && (
+                          <p className="text-sm text-destructive">
+                            {form.formState.errors.startTime.message}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="end-time" className="text-sm font-medium">Ora Fine</Label>
+                        <Input
+                          id="end-time"
+                          type="time"
+                          {...form.register("endTime")}
+                          className="rounded-lg h-12 text-base"
+                        />
+                        {form.formState.errors.endTime && (
+                          <p className="text-sm text-destructive">
+                            {form.formState.errors.endTime.message}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                    <p className="text-sm font-semibold">
-                      {currentUserProfile.full_name ?? "Utente"}
+
+                    {duration && (
+                      <div className="flex items-center gap-2 rounded-lg bg-primary/10 px-3 py-2 text-sm font-medium text-primary">
+                        <Clock2 className="h-4 w-4" />
+                        Durata calcolata: {duration}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Lavoratore Principale */}
+                  {currentUserProfile && (
+                    <div className="rounded-xl bg-primary/5 p-4 space-y-2 border border-primary/20">
+                      <Label className="text-sm font-medium">Lavoratore Principale</Label>
+                      <div className="flex items-center gap-2">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+                          <Users className="h-4 w-4 text-primary" />
+                        </div>
+                        <p className="text-sm font-semibold">
+                          {currentUserProfile.full_name ?? "Utente"}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Partecipanti al Servizio */}
+                  <div className="rounded-xl bg-muted/30 p-4 space-y-4 border border-border/50">
+                    <div className="flex items-center gap-2.5">
+                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10">
+                        <Users className="h-4 w-4 text-primary" />
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium">Partecipanti al Servizio</Label>
+                        <p className="text-xs text-muted-foreground">
+                          Seleziona colleghi o collaboratori che hanno lavorato insieme
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-sm text-muted-foreground">Dipendenti</Label>
+                      <AutocompleteInput
+                        items={employeeItems}
+                        placeholder="Inizia a digitare il nome..."
+                        emptyMessage="Nessun risultato trovato."
+                        clearOnSelect
+                        filterSelected={(item) =>
+                          !selectedEmployeeIds.includes(item.value)
+                        }
+                        onSelect={(item) => {
+                          setSelectedEmployeeIds((prev) => [...prev, item.value])
+                          setParticipantsError("")
+                        }}
+                      />
+                      {selectedEmployees.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {selectedEmployees.map((emp) => (
+                            <Badge
+                              key={emp.value}
+                              variant="team"
+                              className="gap-1.5 pr-1.5 py-1 rounded-lg text-sm font-normal"
+                            >
+                              <div className="flex h-5 w-5 items-center justify-center rounded-md bg-primary/10">
+                                <Users className="h-3 w-3 text-primary" />
+                              </div>
+                              {emp.label}
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveEmployee(emp.value)}
+                                className="ml-0.5 rounded-full p-1.5 h-7 w-7 flex items-center justify-center hover:bg-destructive/20 hover:text-destructive transition-colors"
+                                aria-label={`Rimuovi ${emp.label}`}
+                              >
+                                <X className="h-3.5 w-3.5" />
+                              </button>
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-sm text-muted-foreground">Collaboratori Occasionali</Label>
+                      <AutocompleteInput
+                        items={freelancerItems}
+                        placeholder="Inizia a digitare il nome..."
+                        emptyMessage="Nessun risultato trovato."
+                        clearOnSelect
+                        filterSelected={(item) =>
+                          !selectedFreelancerIds.includes(item.value)
+                        }
+                        onSelect={(item) => {
+                          setSelectedFreelancerIds((prev) => [...prev, item.value])
+                          setParticipantsError("")
+                        }}
+                        actionButton={
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            onClick={() => setIsNewFreelancerOpen(true)}
+                            aria-label="Nuovo collaboratore occasionale"
+                            className="rounded-lg"
+                          >
+                            <UserPlus className="h-4 w-4" />
+                          </Button>
+                        }
+                      />
+                      {selectedFreelancers.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {selectedFreelancers.map((frl) => (
+                            <Badge
+                              key={frl.value}
+                              variant="freelancer"
+                              className="gap-1.5 pr-1.5 py-1 rounded-lg text-sm font-normal"
+                            >
+                              <div className="flex h-5 w-5 items-center justify-center rounded-md bg-primary/10">
+                                <UserPlus className="h-3 w-3 text-primary" />
+                              </div>
+                              {frl.label}
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveFreelancer(frl.value)}
+                                className="ml-0.5 rounded-full p-1.5 h-7 w-7 flex items-center justify-center hover:bg-destructive/20 hover:text-destructive transition-colors"
+                                aria-label={`Rimuovi ${frl.label}`}
+                              >
+                                <X className="h-3.5 w-3.5" />
+                              </button>
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {participantsError && (
+                      <div className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                        {participantsError}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Note */}
+                  <div className="space-y-2">
+                    <Label htmlFor="observation" className="text-sm font-medium">Note / Ubicazione</Label>
+                    <Input
+                      id="observation"
+                      {...form.register("observation")}
+                      placeholder="Es. Casa 1, Pod 2"
+                      className="h-auto min-h-[80px] py-2 rounded-lg resize-none"
+                    />
+                  </div>
+                </>
+              )}
+
+              {/* Costo Extra / Materiale Opzionale */}
+              {entryMode === "hours" && (
+                <div className="rounded-xl bg-amber-50 dark:bg-amber-950/20 p-4 space-y-4 border border-amber-200 dark:border-amber-800/40">
+                  <div>
+                    <Label className="text-sm font-medium">
+                      Aggiungi Costo Extra / Materiale (Opzionale)
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Es. Lavaggio Biancheria, materiali extra, ecc.
                     </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="extra-cost-description" className="text-sm font-medium">
+                      Descrizione Costo
+                    </Label>
+                    <Input
+                      id="extra-cost-description"
+                      type="text"
+                      {...form.register("extraCostDescription")}
+                      placeholder="Es. Lavaggio Biancheria"
+                      className="rounded-lg h-12"
+                    />
+                    {form.formState.errors.extraCostDescription && (
+                      <p className="text-sm text-destructive">
+                        {form.formState.errors.extraCostDescription.message}
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="extra-cost-amount" className="text-sm font-medium">
+                      Importo (€)
+                    </Label>
+                    <Input
+                      id="extra-cost-amount"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      {...form.register("extraCostAmount")}
+                      placeholder="Es. 25.00"
+                      className="rounded-lg h-12"
+                    />
+                    {form.formState.errors.extraCostAmount && (
+                      <p className="text-sm text-destructive">
+                        {form.formState.errors.extraCostAmount.message}
+                      </p>
+                    )}
                   </div>
                 </div>
               )}
 
-              {/* Partecipanti al Servizio */}
-              <div className="rounded-xl bg-muted/30 p-4 space-y-4 border border-border/50">
-                <div className="flex items-center gap-2.5">
-                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10">
-                    <Users className="h-4 w-4 text-primary" />
-                  </div>
+              {entryMode === "extra" && (
+                <div className="rounded-xl bg-amber-50 dark:bg-amber-950/20 p-4 space-y-4 border border-amber-200 dark:border-amber-800/40">
                   <div>
-                    <Label className="text-sm font-medium">Partecipanti al Servizio</Label>
+                    <Label className="text-sm font-medium">Costo Extra / Materiale</Label>
                     <p className="text-xs text-muted-foreground">
-                      Seleziona colleghi o collaboratori che hanno lavorato insieme
+                      Registra un costo extra o materiale senza ore lavorative
                     </p>
                   </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-sm text-muted-foreground">Dipendenti</Label>
-                  <AutocompleteInput
-                    items={employeeItems}
-                    placeholder="Inizia a digitare il nome..."
-                    emptyMessage="Nessun risultato trovato."
-                    clearOnSelect
-                    filterSelected={(item) =>
-                      !selectedEmployeeIds.includes(item.value)
-                    }
-                    onSelect={(item) => {
-                      setSelectedEmployeeIds((prev) => [...prev, item.value])
-                      setParticipantsError("")
-                    }}
-                  />
-                  {selectedEmployees.length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {selectedEmployees.map((emp) => (
-                        <Badge
-                          key={emp.value}
-                          variant="team"
-                          className="gap-1.5 pr-1.5 py-1 rounded-lg text-sm font-normal"
-                        >
-                          <div className="flex h-5 w-5 items-center justify-center rounded-md bg-primary/10">
-                            <Users className="h-3 w-3 text-primary" />
-                          </div>
-                          {emp.label}
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveEmployee(emp.value)}
-                            className="ml-0.5 rounded-full p-1.5 h-7 w-7 flex items-center justify-center hover:bg-destructive/20 hover:text-destructive transition-colors"
-                            aria-label={`Rimuovi ${emp.label}`}
-                          >
-                            <X className="h-3.5 w-3.5" />
-                          </button>
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-sm text-muted-foreground">Collaboratori Occasionali</Label>
-                  <AutocompleteInput
-                    items={freelancerItems}
-                    placeholder="Inizia a digitare il nome..."
-                    emptyMessage="Nessun risultato trovato."
-                    clearOnSelect
-                    filterSelected={(item) =>
-                      !selectedFreelancerIds.includes(item.value)
-                    }
-                    onSelect={(item) => {
-                      setSelectedFreelancerIds((prev) => [...prev, item.value])
-                      setParticipantsError("")
-                    }}
-                    actionButton={
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        onClick={() => setIsNewFreelancerOpen(true)}
-                        aria-label="Nuovo collaboratore occasionale"
-                        className="rounded-lg"
-                      >
-                        <UserPlus className="h-4 w-4" />
-                      </Button>
-                    }
-                  />
-                  {selectedFreelancers.length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {selectedFreelancers.map((frl) => (
-                        <Badge
-                          key={frl.value}
-                          variant="freelancer"
-                          className="gap-1.5 pr-1.5 py-1 rounded-lg text-sm font-normal"
-                        >
-                          <div className="flex h-5 w-5 items-center justify-center rounded-md bg-primary/10">
-                            <UserPlus className="h-3 w-3 text-primary" />
-                          </div>
-                          {frl.label}
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveFreelancer(frl.value)}
-                            className="ml-0.5 rounded-full p-1.5 h-7 w-7 flex items-center justify-center hover:bg-destructive/20 hover:text-destructive transition-colors"
-                            aria-label={`Rimuovi ${frl.label}`}
-                          >
-                            <X className="h-3.5 w-3.5" />
-                          </button>
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {participantsError && (
-                  <div className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                    {participantsError}
+                  <div className="space-y-2">
+                    <Label htmlFor="extra-cost-desc-standalone" className="text-sm font-medium">
+                      Descrizione Costo
+                    </Label>
+                    <Input
+                      id="extra-cost-desc-standalone"
+                      type="text"
+                      {...form.register("extraCostDescription")}
+                      placeholder="Es. Lavaggio Biancheria"
+                      className="rounded-lg h-12"
+                    />
+                    {form.formState.errors.extraCostDescription && (
+                      <p className="text-sm text-destructive">
+                        {form.formState.errors.extraCostDescription.message}
+                      </p>
+                    )}
                   </div>
-                )}
-              </div>
-
-              {/* Note */}
-              <div className="space-y-2">
-                <Label htmlFor="observation" className="text-sm font-medium">Note / Ubicazione</Label>
-                <Input
-                  id="observation"
-                  {...form.register("observation")}
-                  placeholder="Es. Casa 1, Pod 2"
-                  className="h-auto min-h-[80px] py-2 rounded-lg resize-none"
-                />
-              </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="extra-cost-amount-standalone" className="text-sm font-medium">
+                      Importo (€)
+                    </Label>
+                    <Input
+                      id="extra-cost-amount-standalone"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      {...form.register("extraCostAmount")}
+                      placeholder="Es. 25.00"
+                      className="rounded-lg h-12"
+                    />
+                    {form.formState.errors.extraCostAmount && (
+                      <p className="text-sm text-destructive">
+                        {form.formState.errors.extraCostAmount.message}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
 
               <Button
                 type="submit"
@@ -590,7 +841,11 @@ export function InsertionForm() {
                 disabled={isSubmitting}
               >
                 <Save className="h-5 w-5" />
-                {isSubmitting ? "Salvataggio..." : "Registra Ore"}
+                {isSubmitting
+                  ? "Salvataggio..."
+                  : entryMode === "extra"
+                    ? "Registra Solo Costo Extra"
+                    : "Registra Ore"}
               </Button>
             </form>
           </Form>
