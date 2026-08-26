@@ -170,6 +170,61 @@ export type Database = {
           }
         ]
       }
+      extra_costs: {
+        Row: {
+          id: string
+          client_id: string
+          date: string
+          description: string
+          amount: number
+          service_record_id: string | null
+          created_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          client_id: string
+          date: string
+          description: string
+          amount: number
+          service_record_id?: string | null
+          created_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          client_id?: string
+          date?: string
+          description?: string
+          amount?: number
+          service_record_id?: string | null
+          created_by?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'extra_costs_client_id_fkey'
+            columns: ['client_id']
+            isOneToOne: false
+            referencedRelation: 'clients'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'extra_costs_service_record_id_fkey'
+            columns: ['service_record_id']
+            isOneToOne: false
+            referencedRelation: 'service_records'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'extra_costs_created_by_fkey'
+            columns: ['created_by']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          }
+        ]
+      }
     }
     Views: {
       [_ in never]: never

@@ -49,6 +49,7 @@ import {
 import {
   ClientReportPDF,
   type ClientReportRow,
+  type ExtraCostRow,
   type ClientReportData,
 } from "@/components/pdf/client-report-pdf"
 import { toast } from "@/components/ui/toast"
@@ -254,6 +255,7 @@ export function ReportGenerator() {
   const [clientEndDate, setClientEndDate] = useState(currentDateISO())
   const [selectedClientIds, setSelectedClientIds] = useState<Set<string>>(new Set())
   const [clientDataMap, setClientDataMap] = useState<Map<string, ClientReportRow[]>>(new Map())
+  const [clientExtraCostsMap, setClientExtraCostsMap] = useState<Map<string, ExtraCostRow[]>>(new Map())
   const [clientLoaded, setClientLoaded] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
 
@@ -516,20 +518,29 @@ export function ReportGenerator() {
         clientEndDate
       )
 
-      const { data, error } = await supabase
-        .from("service_records")
-        .select(
-          "client_id, date, start_time, end_time, observation, clients(name), service_participants(profile_id, freelancer_id, profiles(full_name), freelancers(name))"
-        )
-        .in("client_id", Array.from(selectedClientIds))
-        .gte("date", start)
-        .lte("date", end)
-        .order("date", { ascending: true })
-        .order("start_time", { ascending: true })
+      const [recordsRes, extraCostsRes] = await Promise.all([
+        supabase
+          .from("service_records")
+          .select(
+            "client_id, date, start_time, end_time, observation, clients(name), service_participants(profile_id, freelancer_id, profiles(full_name), freelancers(name))"
+          )
+          .in("client_id", Array.from(selectedClientIds))
+          .gte("date", start)
+          .lte("date", end)
+          .order("date", { ascending: true })
+          .order("start_time", { ascending: true }),
+        supabase
+          .from("extra_costs")
+          .select("*")
+          .in("client_id", Array.from(selectedClientIds))
+          .gte("date", start)
+          .lte("date", end)
+          .order("date", { ascending: true }),
+      ])
 
       if (cancelled) return
 
-      if (error) {
+      if (recordsRes.error) {
         toast.add({
           title: "Errore",
           description: "Impossibile caricare i dati del report",
@@ -540,7 +551,7 @@ export function ReportGenerator() {
         return
       }
 
-      const allRecords = (data ?? []) as Array<{
+      const allRecords = (recordsRes.data ?? []) as Array<{
         client_id: string
         date: string
         start_time: string
@@ -562,6 +573,27 @@ export function ReportGenerator() {
       setClientDataMap(map)
       setOriginalClientDataMap(new Map(map))
       setEditableClientDataMap(null)
+
+      // Carrega os custos extras por cliente
+      const allExtraCosts = (extraCostsRes.data ?? []) as Array<{
+        client_id: string
+        date: string
+        description: string
+        amount: number
+      }>
+      const extraCostsMap = new Map<string, ExtraCostRow[]>()
+      for (const cid of selectedClientIds) {
+        const matchingCosts = allExtraCosts
+          .filter((c) => c.client_id === cid)
+          .map((c) => ({
+            date: formatDateDDMMYYYY(c.date),
+            description: c.description,
+            amount: Number(c.amount),
+          }))
+        extraCostsMap.set(cid, matchingCosts)
+      }
+      setClientExtraCostsMap(extraCostsMap)
+
       setClientLoaded(true)
     }
 
@@ -600,10 +632,11 @@ export function ReportGenerator() {
           clientName: client.name,
           periodLabel: clientPeriodLabel,
           rows: displayClientDataMap.get(cid) ?? [],
+          extraCosts: clientExtraCostsMap.get(cid) ?? [],
         }
       })
       .filter((d): d is ClientReportData => d !== null)
-  }, [selectedClientIds, clients, displayClientDataMap, clientPeriodLabel])
+  }, [selectedClientIds, clients, displayClientDataMap, clientPeriodLabel, clientExtraCostsMap])
 
   // Total hours across all selected workers
   const totalAllWorkers = useMemo(() => {
@@ -1181,6 +1214,12 @@ export function ReportGenerator() {
                   const rows = displayClientDataMap.get(cid) ?? []
                   const total = rows.reduce((s, r) => s + r.durationHours, 0)
 
+                  const extraCosts = clientExtraCostsMap.get(cid) ?? []
+                  const totalExtraCosts = extraCosts.reduce(
+                    (sum, cost) => sum + cost.amount,
+                    0
+                  )
+
                   return (
                     <div key={cid} className="space-y-2">
                       <div className="flex items-center gap-2">
@@ -1251,6 +1290,43 @@ export function ReportGenerator() {
                             Totale: <span className="text-primary">{total.toFixed(2)} ore</span>
                           </p>
                         </>
+                      )}
+
+                      {/* Costi Extra per cliente */}
+                      {extraCosts.length > 0 && (
+                        <div className="ml-9 space-y-2 mt-4">
+                          <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">
+                            Costi Extra / Materiali
+                          </p>
+                          <div className="overflow-x-auto rounded-lg border border-amber-200 dark:border-amber-800/40 bg-amber-50 dark:bg-amber-950/20">
+                            <Table>
+                              <TableHeader>
+                                <TableRow className="bg-amber-100/50 dark:bg-amber-900/30 hover:bg-amber-100/50 dark:hover:bg-amber-900/30">
+                                  <TableHead className="font-semibold text-xs">Data</TableHead>
+                                  <TableHead className="font-semibold text-xs">Descrizione</TableHead>
+                                  <TableHead className="font-semibold text-xs text-right">Importo (€)</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {extraCosts.map((cost, i) => (
+                                  <TableRow key={`extra-${i}`} className={i % 2 === 1 ? "bg-muted/20" : ""}>
+                                    <TableCell className="text-xs whitespace-nowrap">{cost.date}</TableCell>
+                                    <TableCell className="text-xs">{cost.description}</TableCell>
+                                    <TableCell className="text-xs font-semibold text-right">
+                                      {cost.amount.toFixed(2).replace(".", ",")} €
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </div>
+                          <p className="text-xs font-semibold text-right">
+                            Totale Costi Extra:{" "}
+                            <span className="text-amber-700 dark:text-amber-400">
+                              {totalExtraCosts.toFixed(2).replace(".", ",")} €
+                            </span>
+                          </p>
+                        </div>
                       )}
                     </div>
                   )

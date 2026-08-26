@@ -32,6 +32,10 @@ type ServiceRecord = Database["public"]["Tables"]["service_records"]["Row"] & {
   }>
 }
 
+type ExtraCost = Database["public"]["Tables"]["extra_costs"]["Row"] & {
+  clients: { name: string } | null
+}
+
 const MONTHS_IT = [
   "Gennaio",
   "Febbraio",
@@ -83,6 +87,7 @@ export function DashboardOverview() {
   const supabase = useMemo(() => createClient(), [])
   const [selectedMonth, setSelectedMonth] = useState(currentMonthValue())
   const [records, setRecords] = useState<ServiceRecord[]>([])
+  const [extraCosts, setExtraCosts] = useState<ExtraCost[]>([])
   const [clients, setClients] = useState<Client[]>([])
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [freelancers, setFreelancers] = useState<Freelancer[]>([])
@@ -116,18 +121,29 @@ export function DashboardOverview() {
       const endDate = new Date(Number(year), Number(month), 0)
       const endDateStr = `${year}-${month}-${String(endDate.getDate()).padStart(2, "0")}`
 
-      const { data, error } = await supabase
-        .from("service_records")
-        .select(
-          "*, clients(name, hourly_rate), service_participants(worker_type, profile_id, freelancer_id, profiles(full_name, role), freelancers(name))"
-        )
-        .gte("date", startDate)
-        .lte("date", endDateStr)
-        .order("date", { ascending: true })
+      const [recordsRes, extraCostsRes] = await Promise.all([
+        supabase
+          .from("service_records")
+          .select(
+            "*, clients(name, hourly_rate), service_participants(worker_type, profile_id, freelancer_id, profiles(full_name, role), freelancers(name))"
+          )
+          .gte("date", startDate)
+          .lte("date", endDateStr)
+          .order("date", { ascending: true }),
+        supabase
+          .from("extra_costs")
+          .select("*, clients(name)")
+          .gte("date", startDate)
+          .lte("date", endDateStr)
+          .order("date", { ascending: true }),
+      ])
 
       if (cancelled) return
-      if (!error && data) {
-        setRecords(data as ServiceRecord[])
+      if (!recordsRes.error && recordsRes.data) {
+        setRecords(recordsRes.data as ServiceRecord[])
+      }
+      if (!extraCostsRes.error && extraCostsRes.data) {
+        setExtraCosts(extraCostsRes.data as ExtraCost[])
       }
       setLoading(false)
     }
@@ -159,17 +175,23 @@ export function DashboardOverview() {
       }
     }
 
+    // Adiciona os custos extras ao faturamento estimado
+    for (const ec of extraCosts) {
+      totalRevenue += Number(ec.amount)
+      if (ec.client_id) clientIds.add(ec.client_id)
+    }
+
     return {
       totalHours,
       totalRevenue,
       clientCount: clientIds.size,
       workerCount: workerIds.size,
     }
-  }, [records])
+  }, [records, extraCosts])
 
-  // ── Hours per client ──
+  // ── Revenue/Costs per client ──
   const clientRanking = useMemo(() => {
-    const map = new Map<string, { name: string; hours: number; revenue: number }>()
+    const map = new Map<string, { name: string; hours: number; revenue: number; extraCosts: number }>()
     for (const r of records) {
       const duration = toDurationHours(r.start_time, r.end_time)
       const participantCount = r.service_participants.length
@@ -185,13 +207,31 @@ export function DashboardOverview() {
           name: r.clients?.name ?? "Sconosciuto",
           hours: serviceHours,
           revenue: serviceHours * hourlyRate,
+          extraCosts: 0,
         })
       }
     }
+
+    // Adiciona os custos extras ao ranking por cliente
+    for (const ec of extraCosts) {
+      const existing = map.get(ec.client_id)
+      if (existing) {
+        existing.extraCosts += Number(ec.amount)
+        existing.revenue += Number(ec.amount)
+      } else {
+        map.set(ec.client_id, {
+          name: ec.clients?.name ?? "Sconosciuto",
+          hours: 0,
+          revenue: Number(ec.amount),
+          extraCosts: Number(ec.amount),
+        })
+      }
+    }
+
     return Array.from(map.entries())
       .map(([id, data]) => ({ id, ...data }))
-      .sort((a, b) => b.hours - a.hours)
-  }, [records])
+      .sort((a, b) => b.revenue - a.revenue)
+  }, [records, extraCosts])
 
   const maxClientHours = clientRanking.length > 0 ? clientRanking[0].hours : 0
 
@@ -332,7 +372,7 @@ export function DashboardOverview() {
 
       {/* Detail sections */}
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Hours per client */}
+        {/* Revenue per client */}
         <Card className="rounded-xl border shadow-sm">
           <CardHeader className="pb-4">
             <CardTitle className="text-base flex items-center gap-2">
@@ -340,7 +380,7 @@ export function DashboardOverview() {
               Riepilogo Ore per Cliente
             </CardTitle>
             <CardDescription>
-              {monthLabel(selectedMonth)}
+              {monthLabel(selectedMonth)} — include costi extra e materiali
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -358,6 +398,11 @@ export function DashboardOverview() {
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-sm font-medium truncate">{client.name}</p>
                     <div className="flex items-center gap-3 shrink-0">
+                      {client.extraCosts > 0 && (
+                        <Badge variant="secondary" className="rounded-full text-[10px]">
+                          +{formatCurrency(client.extraCosts)}
+                        </Badge>
+                      )}
                       <span className="text-sm font-semibold">
                         {formatHours(client.hours)} h
                       </span>
