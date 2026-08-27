@@ -1,5 +1,5 @@
-import { GestioneManager } from "@/components/gestione-manager";
+import { redirect } from "next/navigation"
 
 export default function GestionePage() {
-  return <GestioneManager />;
+  redirect("/admin")
 }

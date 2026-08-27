@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
-import { Calculator, Clock, FileText, LayoutDashboard, LogOut, Menu, Settings, TrendingUp, User, Users, X } from "lucide-react"
+import { Calculator, Clock, FileText, LayoutDashboard, LogOut, Menu, TrendingUp, User, Users, X } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
@@ -16,7 +16,6 @@ const navLinks = [
   { href: "/report", label: "Report", icon: Clock },
   { href: "/calcolo-rapido", label: "Calcolo Rapido", icon: Calculator },
   { href: "/admin/dashboard", label: "Dashboard", icon: TrendingUp },
-  { href: "/gestione", label: "Gestione", icon: Settings },
   { href: "/admin", label: "Area Admin", icon: Users },
   { href: "/profilo", label: "Profilo", icon: User },
 ]
@@ -75,12 +74,11 @@ export function Navbar() {
 
   // Enquanto carrega, não mostrar links admin
   const filteredLinks = isLoading
-    ? navLinks.filter((l) => l.href !== "/gestione" && l.href !== "/admin" && l.href !== "/admin/dashboard")
+    ? navLinks.filter((l) => l.href !== "/admin" && l.href !== "/admin/dashboard")
     : isAdmin
       ? navLinks
       : navLinks.filter(
           (l) =>
-            l.href !== "/gestione" &&
             l.href !== "/admin" &&
             l.href !== "/admin/dashboard"
         )
