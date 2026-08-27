@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react"
 import {
   Building2,
+  Download,
+  Loader2,
   Pencil,
   Plus,
   RotateCcw,
@@ -13,6 +15,7 @@ import {
   UserX,
   Users,
 } from "lucide-react"
+import { Database as DatabaseIcon } from "lucide-react"
 
 import { createClient } from "@/lib/supabase/client"
 import type { Database } from "@/types/database.types"
@@ -139,6 +142,7 @@ export function GestioneManager() {
   const [isToggling, setIsToggling] = useState<string | null>(null)
   const [showInactiveClients, setShowInactiveClients] = useState(false)
   const [isTogglingClient, setIsTogglingClient] = useState<string | null>(null)
+  const [isDownloadingBackup, setIsDownloadingBackup] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -281,6 +285,58 @@ export function GestioneManager() {
 
     setIsDeleting(false)
     setDeleteTarget(null)
+  }
+
+  async function handleDownloadBackup() {
+    setIsDownloadingBackup(true)
+
+    try {
+      const res = await fetch("/api/admin/backup", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      })
+
+      if (!res.ok) {
+        const data = await res.json()
+        toast.add({
+          title: "Errore",
+          description: data.error || "Errore durante il download del backup.",
+          type: "error",
+        })
+        return
+      }
+
+      // Obtém o blob do arquivo JSON
+      const blob = await res.blob()
+
+      // Extrai o nome do arquivo do Content-Disposition
+      const contentDisposition = res.headers.get("Content-Disposition") ?? ""
+      const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/)
+      const filename = filenameMatch?.[1] ?? `gestione_ore_backup_${new Date().toISOString().split("T")[0]}.json`
+
+      // Cria o link de download e clica
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = url
+      link.download = filename
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+
+      toast.add({
+        title: "Backup scaricato con successo.",
+        type: "success",
+      })
+    } catch {
+      toast.add({
+        title: "Errore",
+        description: "Errore durante il download del backup.",
+        type: "error",
+      })
+    } finally {
+      setIsDownloadingBackup(false)
+    }
   }
 
   async function handleReactivateClient(clientId: string) {
@@ -478,6 +534,47 @@ export function GestioneManager() {
           Gestisci utenti, clienti e collaboratori del sistema
         </p>
       </div>
+
+      {/* Sicurezza e Backup */}
+      <Card className="shadow-md border-border/50 rounded-2xl bg-gradient-to-r from-slate-50 to-emerald-50/30 dark:from-slate-900 dark:to-emerald-950/20 border-t-4 border-t-emerald-600">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+          <div className="flex items-center gap-2">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100">
+              <DatabaseIcon className="h-5 w-5 text-emerald-600" />
+            </div>
+            <div>
+              <CardTitle className="text-base">Sicurezza e Backup</CardTitle>
+              <CardDescription>
+                Scarica un backup completo dei dati del sistema in formato JSON
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-muted-foreground">
+              Il backup include clienti, utenti, collaboratori, registri ore, partecipanti e costi extra.
+            </p>
+            <Button
+              onClick={handleDownloadBackup}
+              disabled={isDownloadingBackup}
+              className="rounded-xl shadow-sm whitespace-nowrap"
+            >
+              {isDownloadingBackup ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Download in corso...
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4" />
+                  Scarica Backup Dati (JSON)
+                </>
+              )}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       <Tabs defaultValue="employees">
         <TabsList className="w-full md:w-auto rounded-xl p-1 bg-muted/50">
