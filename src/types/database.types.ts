@@ -52,18 +52,21 @@ export type Database = {
           id: string
           name: string
           hourly_rate: number
+          active: boolean
           created_at: string
         }
         Insert: {
           id?: string
           name: string
           hourly_rate?: number
+          active?: boolean
           created_at?: string
         }
         Update: {
           id?: string
           name?: string
           hourly_rate?: number
+          active?: boolean
           created_at?: string
         }
         Relationships: []
