@@ -5,6 +5,7 @@ import {
   Building2,
   Pencil,
   Plus,
+  RotateCcw,
   Shield,
   Trash2,
   UserCheck,
@@ -136,6 +137,8 @@ export function GestioneManager() {
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isToggling, setIsToggling] = useState<string | null>(null)
+  const [showInactiveClients, setShowInactiveClients] = useState(false)
+  const [isTogglingClient, setIsTogglingClient] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -232,8 +235,38 @@ export function GestioneManager() {
     if (!deleteTarget) return
     setIsDeleting(true)
 
-    const table = deleteTarget.kind === "client" ? "clients" : "freelancers"
-    const { error } = await supabase.from(table).delete().eq("id", deleteTarget.id)
+    // Cliente: Soft Delete (desativa o cliente preservando o histórico)
+    if (deleteTarget.kind === "client") {
+      const { error } = await supabase
+        .from("clients")
+        .update({ active: false })
+        .eq("id", deleteTarget.id)
+
+      if (error) {
+        toast.add({
+          title: "Errore",
+          description: `Errore durante la disattivazione del cliente.`,
+          type: "error",
+        })
+      } else {
+        setClients((prev) =>
+          prev.map((c) =>
+            c.id === deleteTarget.id ? { ...c, active: false } : c
+          )
+        )
+        toast.add({
+          title: "Cliente disattivato con successo. Lo storico delle ore è stato preservato.",
+          type: "success",
+        })
+      }
+
+      setIsDeleting(false)
+      setDeleteTarget(null)
+      return
+    }
+
+    // Freelancer: exclusão física (mantém o comportamento atual)
+    const { error } = await supabase.from("freelancers").delete().eq("id", deleteTarget.id)
 
     if (error) {
       toast.add({
@@ -241,9 +274,6 @@ export function GestioneManager() {
         description: `Errore durante l'eliminazione. Potrebbe essere collegato a registrazioni.`,
         type: "error",
       })
-    } else if (deleteTarget.kind === "client") {
-      setClients((prev) => prev.filter((c) => c.id !== deleteTarget.id))
-      toast.add({ title: "Cliente eliminato con successo!", type: "success" })
     } else {
       setFreelancers((prev) => prev.filter((f) => f.id !== deleteTarget.id))
       toast.add({ title: "Collaboratore eliminato con successo!", type: "success" })
@@ -251,6 +281,33 @@ export function GestioneManager() {
 
     setIsDeleting(false)
     setDeleteTarget(null)
+  }
+
+  async function handleReactivateClient(clientId: string) {
+    setIsTogglingClient(clientId)
+
+    const { error } = await supabase
+      .from("clients")
+      .update({ active: true })
+      .eq("id", clientId)
+
+    if (error) {
+      toast.add({
+        title: "Errore",
+        description: "Impossibile riattivare il cliente",
+        type: "error",
+      })
+    } else {
+      setClients((prev) =>
+        prev.map((c) => (c.id === clientId ? { ...c, active: true } : c))
+      )
+      toast.add({
+        title: "Cliente riattivato con successo!",
+        type: "success",
+      })
+    }
+
+    setIsTogglingClient(null)
   }
 
   // ── Employees ──
@@ -538,10 +595,21 @@ export function GestioneManager() {
                   Elenco dei clienti registrati
                 </CardDescription>
               </div>
-              <Button onClick={() => openCreateEntity("client")}>
-                <Plus className="h-4 w-4" />
-                Nuovo Cliente
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant={showInactiveClients ? "secondary" : "outline"}
+                  size="sm"
+                  onClick={() => setShowInactiveClients((prev) => !prev)}
+                  className="rounded-lg text-xs"
+                >
+                  <Shield className="h-3.5 w-3.5" />
+                  Mostra Disattivati
+                </Button>
+                <Button onClick={() => openCreateEntity("client")}>
+                  <Plus className="h-4 w-4" />
+                  Nuovo Cliente
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="p-0">
               <Table>
@@ -549,52 +617,76 @@ export function GestioneManager() {
                   <TableRow>
                     <TableHead>Nome</TableHead>
                     <TableHead>Tariffa Oraria</TableHead>
+                    <TableHead>Stato</TableHead>
                     <TableHead className="w-[120px] text-right">Azioni</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {clients.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={3} className="py-8 text-center text-muted-foreground">
+                      <TableCell colSpan={4} className="py-8 text-center text-muted-foreground">
                         Nessun cliente registrato.
                       </TableCell>
                     </TableRow>
                   ) : (
-                    clients.map((client) => (
-                      <TableRow key={client.id}>
-                        <TableCell className="font-medium">{client.name}</TableCell>
-                        <TableCell>
-                          {new Intl.NumberFormat("it-IT", {
-                            style: "currency",
-                            currency: "EUR",
-                          }).format(client.hourly_rate ?? 0)}
-                          /h
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => openEditEntity("client", client)}
-                              aria-label={`Modifica ${client.name}`}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="text-destructive"
-                              onClick={() =>
-                                setDeleteTarget({ kind: "client", id: client.id, name: client.name })
-                              }
-                              aria-label={`Elimina ${client.name}`}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
+                    clients
+                      .filter((client) => showInactiveClients || client.active !== false)
+                      .map((client) => (
+                        <TableRow key={client.id}>
+                          <TableCell className="font-medium">{client.name}</TableCell>
+                          <TableCell>
+                            {new Intl.NumberFormat("it-IT", {
+                              style: "currency",
+                              currency: "EUR",
+                            }).format(client.hourly_rate ?? 0)}
+                            /h
+                          </TableCell>
+                          <TableCell>
+                            {client.active === false && (
+                              <Badge variant="secondary" className="gap-1">
+                                <UserX className="h-3 w-3" />
+                                Disattivato
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => openEditEntity("client", client)}
+                                aria-label={`Modifica ${client.name}`}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              {client.active === false ? (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="text-green-600"
+                                  disabled={isTogglingClient === client.id}
+                                  onClick={() => handleReactivateClient(client.id)}
+                                  aria-label={`Ripristina ${client.name}`}
+                                >
+                                  <RotateCcw className="h-4 w-4" />
+                                </Button>
+                              ) : (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="text-destructive"
+                                  onClick={() =>
+                                    setDeleteTarget({ kind: "client", id: client.id, name: client.name })
+                                  }
+                                  aria-label={`Disattiva ${client.name}`}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
                   )}
                 </TableBody>
               </Table>
@@ -825,22 +917,35 @@ export function GestioneManager() {
         </DialogContent>
       </Dialog>
 
-      {/* 🟥 AlertDialog conferma eliminazione */}
+      {/* 🟥 AlertDialog conferma eliminazione/disattivazione */}
       <AlertDialog
         open={deleteTarget !== null}
         onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}
       >
         <AlertDialogContent className="w-[95vw] max-w-lg">
           <AlertDialogHeader>
-            <AlertDialogTitle>Conferma eliminazione</AlertDialogTitle>
+            <AlertDialogTitle>
+              {deleteTarget?.kind === "client" ? "Conferma disattivazione" : "Conferma eliminazione"}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              {`Sei sicuro di voler eliminare "${deleteTarget?.name ?? ""}"? L'azione non può essere annullata.`}
+              {deleteTarget?.kind === "client"
+                ? `Sei sicuro di voler disattivare "${deleteTarget?.name ?? ""}"? Il cliente non apparirà nei nuovi inserimenti, ma lo storico delle ore e dei costi extra verrà preservato.`
+                : `Sei sicuro di voler eliminare "${deleteTarget?.name ?? ""}"? L'azione non può essere annullata.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col-reverse sm:flex-row sm:justify-end gap-2">
             <AlertDialogCancel className="w-full sm:w-auto min-h-[44px]">Annulla</AlertDialogCancel>
-            <AlertDialogAction variant="destructive" onClick={handleDelete} disabled={isDeleting} className="w-full sm:w-auto min-h-[44px]">
-              {isDeleting ? "Eliminazione..." : "Elimina"}
+            <AlertDialogAction
+              variant={deleteTarget?.kind === "client" ? "default" : "destructive"}
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="w-full sm:w-auto min-h-[44px]"
+            >
+              {isDeleting
+                ? "Elaborazione..."
+                : deleteTarget?.kind === "client"
+                  ? "Disattiva"
+                  : "Elimina"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

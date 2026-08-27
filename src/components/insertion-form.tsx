@@ -141,7 +141,7 @@ export function InsertionForm() {
       } = await supabase.auth.getUser()
 
       const [clientsRes, employeesRes, freelancersRes] = await Promise.all([
-        supabase.from("clients").select("*").order("name"),
+        supabase.from("clients").select("*").eq("active", true).order("name"),
         supabase.from("profiles").select("*").order("full_name"),
         supabase.from("freelancers").select("*").order("name"),
       ])
