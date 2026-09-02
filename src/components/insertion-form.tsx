@@ -326,22 +326,10 @@ export function InsertionForm() {
       return
     }
 
-    // Garantisce che il currentUserProfile sia sempre presente nei partecipanti
-    const finalEmployeeIds = selectedEmployeeIds.includes(currentUserProfile?.id ?? "")
-      ? selectedEmployeeIds
-      : currentUserProfile
-        ? [currentUserProfile.id, ...selectedEmployeeIds]
-        : selectedEmployeeIds
-
-    if (finalEmployeeIds.length === 0 && selectedFreelancerIds.length === 0) {
+    if (selectedEmployeeIds.length === 0 && selectedFreelancerIds.length === 0) {
       setParticipantsError("Seleziona almeno un partecipante")
       return
     }
-
-    // Se l'utente logato è stato rimosso, aggiungilo sempre come lavoratore principale
-    const employeeIdsWithOwner = currentUserProfile
-      ? Array.from(new Set([currentUserProfile.id, ...finalEmployeeIds]))
-      : finalEmployeeIds
 
     setIsSubmitting(true)
 
@@ -375,7 +363,7 @@ export function InsertionForm() {
     }
 
     const participants = [
-      ...employeeIdsWithOwner.map((profileId) => ({
+      ...selectedEmployeeIds.map((profileId) => ({
         service_record_id: record.id,
         worker_type: "employee" as const,
         profile_id: profileId,
@@ -650,14 +638,16 @@ export function InsertionForm() {
                                 <Users className="h-3 w-3 text-primary" />
                               </div>
                               {emp.label}
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveEmployee(emp.value)}
-                                className="ml-0.5 rounded-full p-1.5 h-7 w-7 flex items-center justify-center hover:bg-destructive/20 hover:text-destructive transition-colors"
-                                aria-label={`Rimuovi ${emp.label}`}
-                              >
-                                <X className="h-3.5 w-3.5" />
-                              </button>
+                              {currentUserProfile?.role === "admin" || emp.value !== currentUserProfile?.id ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveEmployee(emp.value)}
+                                  className="ml-0.5 rounded-full p-1.5 h-7 w-7 flex items-center justify-center hover:bg-destructive/20 hover:text-destructive transition-colors"
+                                  aria-label={`Rimuovi ${emp.label}`}
+                                >
+                                  <X className="h-3.5 w-3.5" />
+                                </button>
+                              ) : null}
                             </Badge>
                           ))}
                         </div>
