@@ -24,6 +24,60 @@ export async function POST(request: Request) {
   )
 
   try {
+    // ── Validação de duplicidade (normalizada: trim + lowercase) ──
+    const normalizedEmail = email.trim().toLowerCase()
+    const normalizedUsername = username ? username.trim().toLowerCase() : null
+
+    // Verifica se o email (normalizado) já existe em profiles
+    const { data: profilesByEmail, error: emailQueryError } = await supabase
+      .from("profiles")
+      .select("id, email")
+      .ilike("email", normalizedEmail)
+
+    if (
+      !emailQueryError &&
+      profilesByEmail?.some((p) => p.email?.trim().toLowerCase() === normalizedEmail)
+    ) {
+      return NextResponse.json(
+        { message: "Un utente con questa email o username esiste già." },
+        { status: 400 }
+      )
+    }
+
+    // Verifica se o email (normalizado) já existe em auth.users
+    const { data: authUsers, error: listUsersError } =
+      await supabase.auth.admin.listUsers()
+
+    if (
+      !listUsersError &&
+      authUsers?.users?.some((u) => u.email?.trim().toLowerCase() === normalizedEmail)
+    ) {
+      return NextResponse.json(
+        { message: "Un utente con questa email o username esiste già." },
+        { status: 400 }
+      )
+    }
+
+    // Verifica se o username (normalizado) já existe em profiles
+    if (normalizedUsername) {
+      const { data: profilesByUsername, error: usernameQueryError } =
+        await supabase
+          .from("profiles")
+          .select("id, username")
+          .ilike("username", normalizedUsername)
+
+      if (
+        !usernameQueryError &&
+        profilesByUsername?.some(
+          (p) => p.username?.trim().toLowerCase() === normalizedUsername
+        )
+      ) {
+        return NextResponse.json(
+          { message: "Un utente con questa email o username esiste già." },
+          { status: 400 }
+        )
+      }
+    }
     const { data: userData, error: createError } =
       await supabase.auth.admin.createUser({
         email,
