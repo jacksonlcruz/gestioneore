@@ -185,6 +185,71 @@ export function GestioneManager() {
 
     setIsSaving(true)
 
+    // ── Validação de duplicidade (normalizada: trim + lowercase) ──
+    const normalizedName = name.trim().toLowerCase()
+
+    if (entityDialog.kind === "client") {
+      const { data: existingClients } = await supabase
+        .from("clients")
+        .select("*")
+        .ilike("name", name.trim())
+
+      const duplicateClient = existingClients?.find(
+        (c) =>
+          c.name.trim().toLowerCase() === normalizedName &&
+          (entityDialog.mode !== "edit" || c.id !== entityDialog.editId)
+      )
+
+      if (duplicateClient) {
+        setIsSaving(false)
+        if (duplicateClient.active) {
+          toast.add({
+            title: "Errore",
+            description: "Un cliente con questo nome esiste già.",
+            type: "error",
+          })
+        } else {
+          const toastId = toast.add({
+            title: "Cliente disattivato",
+            description:
+              "Questo cliente esiste già ma è disattivato. Vuoi ripristinarlo?",
+            type: "warning",
+            timeout: 0,
+            actionProps: {
+              children: "Ripristina",
+              onClick: () => {
+                toast.close(toastId)
+                setEntityDialog((p) => ({ ...p, open: false }))
+                handleReactivateClient(duplicateClient.id)
+              },
+            },
+          })
+        }
+        return
+      }
+    } else {
+      const { data: existingFreelancers } = await supabase
+        .from("freelancers")
+        .select("*")
+        .ilike("name", name.trim())
+
+      const duplicateFreelancer = existingFreelancers?.find(
+        (f) =>
+          f.name.trim().toLowerCase() === normalizedName &&
+          (entityDialog.mode !== "edit" || f.id !== entityDialog.editId)
+      )
+
+      if (duplicateFreelancer) {
+        setIsSaving(false)
+        toast.add({
+          title: "Errore",
+          description: "Un collaboratore con questo nome esiste già.",
+          type: "error",
+        })
+        return
+      }
+    }
+
     if (entityDialog.mode === "create") {
       const table = entityDialog.kind === "client" ? "clients" : "freelancers"
       const payload =
