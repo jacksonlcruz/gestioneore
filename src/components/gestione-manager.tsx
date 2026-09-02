@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import {
+  ArrowLeftRight,
   Building2,
   Download,
   Loader2,
@@ -105,6 +106,19 @@ interface EmployeeDialogState {
   isActive: boolean
 }
 
+interface ConvertFreelancerDialogState {
+  open: boolean
+  freelancerId: string | null
+  fullName: string
+  email: string
+  username: string
+  password: string
+}
+
+interface ConvertUserTarget {
+  profile: Profile | null
+}
+
 const initialEntityDialog: EntityDialogState = {
   open: false,
   mode: "create",
@@ -127,6 +141,15 @@ const initialEmployeeDialog: EmployeeDialogState = {
   isActive: true,
 }
 
+const initialConvertFreelancerDialog: ConvertFreelancerDialogState = {
+  open: false,
+  freelancerId: null,
+  fullName: "",
+  email: "",
+  username: "",
+  password: "",
+}
+
 export function GestioneManager() {
   const supabase = useMemo(() => createClient(), [])
 
@@ -136,7 +159,10 @@ export function GestioneManager() {
 
   const [entityDialog, setEntityDialog] = useState<EntityDialogState>(initialEntityDialog)
   const [employeeDialog, setEmployeeDialog] = useState<EmployeeDialogState>(initialEmployeeDialog)
+  const [convertFreelancerDialog, setConvertFreelancerDialog] = useState<ConvertFreelancerDialogState>(initialConvertFreelancerDialog)
+  const [convertUserTarget, setConvertUserTarget] = useState<ConvertUserTarget>({ profile: null })
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget>(null)
+  const [isConverting, setIsConverting] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isToggling, setIsToggling] = useState<string | null>(null)
@@ -577,6 +603,106 @@ export function GestioneManager() {
     setIsToggling(null)
   }
 
+  // ── Conversione Collaboratore ↔ Dipendente ──
+
+  function openConvertFreelancer(freelancer: Freelancer) {
+    setConvertFreelancerDialog({
+      open: true,
+      freelancerId: freelancer.id,
+      fullName: freelancer.name,
+      email: "",
+      username: "",
+      password: "",
+    })
+  }
+
+  async function handleConvertFreelancerToUser() {
+    const d = convertFreelancerDialog
+    if (!d.freelancerId || !d.email.trim() || !d.password.trim()) {
+      toast.add({ title: "Errore", description: "Email e password sono obbligatorie", type: "error" })
+      return
+    }
+
+    setIsConverting(true)
+
+    try {
+      const res = await fetch("/api/admin/convert-freelancer-to-user", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          freelancerId: d.freelancerId,
+          email: d.email.trim(),
+          username: d.username.trim() || null,
+          password: d.password,
+          fullName: d.fullName.trim(),
+        }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        toast.add({ title: "Errore", description: data.error || "Errore durante la conversione", type: "error" })
+        return
+      }
+
+      toast.add({ title: data.message || "Convertito con successo in Dipendente", type: "success" })
+      setConvertFreelancerDialog(initialConvertFreelancerDialog)
+
+      // Recarrega os dados
+      const [freelancersRes, profilesRes] = await Promise.all([
+        supabase.from("freelancers").select("*").order("name"),
+        supabase.from("profiles").select("*").order("full_name"),
+      ])
+      if (freelancersRes.data) setFreelancers(freelancersRes.data)
+      if (profilesRes.data) setProfiles(profilesRes.data)
+    } catch {
+      toast.add({ title: "Errore", description: "Errore di connessione", type: "error" })
+    }
+
+    setIsConverting(false)
+  }
+
+  function openConvertUserToFreelancer(profile: Profile) {
+    setConvertUserTarget({ profile })
+  }
+
+  async function handleConvertUserToFreelancer() {
+    const profile = convertUserTarget.profile
+    if (!profile) return
+
+    setIsConverting(true)
+
+    try {
+      const res = await fetch("/api/admin/convert-user-to-freelancer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: profile.id }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        toast.add({ title: "Errore", description: data.error || "Errore durante la conversione", type: "error" })
+        return
+      }
+
+      toast.add({ title: data.message || "Convertito con successo in Collaboratore Esterno", type: "success" })
+      setConvertUserTarget({ profile: null })
+
+      // Recarrega os dados
+      const [freelancersRes, profilesRes] = await Promise.all([
+        supabase.from("freelancers").select("*").order("name"),
+        supabase.from("profiles").select("*").order("full_name"),
+      ])
+      if (freelancersRes.data) setFreelancers(freelancersRes.data)
+      if (profilesRes.data) setProfiles(profilesRes.data)
+    } catch {
+      toast.add({ title: "Errore", description: "Errore di connessione", type: "error" })
+    }
+
+    setIsConverting(false)
+  }
+
   // ── Dialog Labels ──
 
   const entityDialogTitle =
@@ -722,6 +848,16 @@ export function GestioneManager() {
                               aria-label={`Modifica ${profile.full_name || "utente"}`}
                             >
                               <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-amber-600"
+                              onClick={() => openConvertUserToFreelancer(profile)}
+                              aria-label={`Converti ${profile.full_name || "utente"} in Collaboratore`}
+                              title="Converti in Collaboratore"
+                            >
+                              <ArrowLeftRight className="h-4 w-4" />
                             </Button>
                             <Button
                               variant="ghost"
@@ -880,41 +1016,53 @@ export function GestioneManager() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {freelancers.length === 0 ? (
+                  {freelancers.filter((f) => f.active !== false).length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={2} className="py-8 text-center text-muted-foreground">
                         Nessun collaboratore registrato.
                       </TableCell>
                     </TableRow>
                   ) : (
-                    freelancers.map((freelancer) => (
-                      <TableRow key={freelancer.id}>
-                        <TableCell className="font-medium">{freelancer.name}</TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => openEditEntity("freelancer", freelancer)}
-                              aria-label={`Modifica ${freelancer.name}`}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="text-destructive"
-                              onClick={() =>
-                                setDeleteTarget({ kind: "freelancer", id: freelancer.id, name: freelancer.name })
-                              }
-                              aria-label={`Elimina ${freelancer.name}`}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
+                    freelancers
+                      .filter((f) => f.active !== false)
+                      .map((freelancer) => (
+                        <TableRow key={freelancer.id}>
+                          <TableCell className="font-medium">{freelancer.name}</TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="text-green-600"
+                                onClick={() => openConvertFreelancer(freelancer)}
+                                aria-label={`Promuovi ${freelancer.name} a Dipendente`}
+                                title="Promuovi a Dipendente"
+                              >
+                                <ArrowLeftRight className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => openEditEntity("freelancer", freelancer)}
+                                aria-label={`Modifica ${freelancer.name}`}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="text-destructive"
+                                onClick={() =>
+                                  setDeleteTarget({ kind: "freelancer", id: freelancer.id, name: freelancer.name })
+                                }
+                                aria-label={`Elimina ${freelancer.name}`}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
                   )}
                 </TableBody>
               </Table>
@@ -1078,6 +1226,102 @@ export function GestioneManager() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* 🟦 Dialog Conversione Collaboratore → Dipendente */}
+      <Dialog
+        open={convertFreelancerDialog.open}
+        onOpenChange={(o) => !o && setConvertFreelancerDialog(initialConvertFreelancerDialog)}
+      >
+        <DialogContent className="w-[95vw] max-w-lg sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Promuovi a Dipendente</DialogTitle>
+            <DialogDescription>
+              Crea un account per il collaboratore "{convertFreelancerDialog.fullName}". Lo storico delle ore verrà migrato automaticamente.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="conv-full-name">Nome e Cognome</Label>
+              <Input
+                id="conv-full-name"
+                value={convertFreelancerDialog.fullName}
+                onChange={(e) => setConvertFreelancerDialog((p) => ({ ...p, fullName: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="conv-username">Nome Utente</Label>
+              <Input
+                id="conv-username"
+                value={convertFreelancerDialog.username}
+                onChange={(e) => setConvertFreelancerDialog((p) => ({ ...p, username: e.target.value }))}
+                placeholder="mario.rossi"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="conv-email">Email</Label>
+              <Input
+                id="conv-email"
+                type="email"
+                value={convertFreelancerDialog.email}
+                onChange={(e) => setConvertFreelancerDialog((p) => ({ ...p, email: e.target.value }))}
+                placeholder="mario.rossi@email.com"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="conv-password">Password</Label>
+              <Input
+                id="conv-password"
+                type="password"
+                value={convertFreelancerDialog.password}
+                onChange={(e) => setConvertFreelancerDialog((p) => ({ ...p, password: e.target.value }))}
+                placeholder="••••••••"
+              />
+            </div>
+          </div>
+          <DialogFooter className="flex-col-reverse sm:flex-row sm:justify-end gap-2">
+            <Button variant="outline" onClick={() => setConvertFreelancerDialog(initialConvertFreelancerDialog)} className="w-full sm:w-auto min-h-[44px]">
+              Annulla
+            </Button>
+            <Button
+              onClick={handleConvertFreelancerToUser}
+              disabled={
+                !convertFreelancerDialog.email.trim() ||
+                !convertFreelancerDialog.password.trim() ||
+                isConverting
+              }
+              className="w-full sm:w-auto min-h-[44px]"
+            >
+              {isConverting ? "Conversione..." : "Converti in Dipendente"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 🟥 AlertDialog conferma conversione Utente → Collaboratore */}
+      <AlertDialog
+        open={convertUserTarget.profile !== null}
+        onOpenChange={(open) => { if (!open) setConvertUserTarget({ profile: null }) }}
+      >
+        <AlertDialogContent className="w-[95vw] max-w-lg">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Converti in Collaboratore Esterno</AlertDialogTitle>
+            <AlertDialogDescription>
+              Sei sicuro di voler convertire "{convertUserTarget.profile?.full_name || "questo utente"}" in Collaboratore Esterno? L'accesso dell'utente verrà revocato e le ore registrate verranno migrate al nuovo profilo collaboratore.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col-reverse sm:flex-row sm:justify-end gap-2">
+            <AlertDialogCancel className="w-full sm:w-auto min-h-[44px]">Annulla</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={handleConvertUserToFreelancer}
+              disabled={isConverting}
+              className="w-full sm:w-auto min-h-[44px]"
+            >
+              {isConverting ? "Conversione..." : "Converti in Collaboratore"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* 🟥 AlertDialog conferma eliminazione/disattivazione */}
       <AlertDialog
