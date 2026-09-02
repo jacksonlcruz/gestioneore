@@ -747,7 +747,7 @@ export function ReportGenerator() {
       </div>
 
       <Tabs defaultValue="employee">
-        <TabsList className="flex flex-col sm:flex-row w-full sm:w-auto bg-slate-100 p-1.5 rounded-xl border border-slate-200/80 sm:inline-flex gap-1.5 h-auto">
+        <TabsList className="flex flex-col sm:flex-row w-full sm:w-auto bg-muted/60 p-1 rounded-xl sm:inline-flex gap-1 h-auto">
           <TabsTrigger
             value="employee"
             className="w-full sm:w-auto justify-center rounded-lg px-4 py-2.5 text-xs sm:text-sm font-medium transition-all duration-150 data-active:!bg-blue-600 data-active:!text-white data-active:!shadow-md !bg-transparent !text-slate-600 hover:bg-slate-200/60 flex items-center gap-2"
@@ -766,14 +766,14 @@ export function ReportGenerator() {
 
         {/* Employee tab */}
         <TabsContent value="employee" className="space-y-4">
-          <Card className="shadow-md border-border/50 rounded-2xl border-t-4 border-t-blue-600">
-            <CardHeader className="pb-4">
-              <div className="flex items-center gap-2">
-                <Badge variant="team" className="rounded-lg text-xs font-semibold uppercase tracking-wide">
-                  Report Dipendenti
-                </Badge>
-              </div>
-              <CardTitle className="text-base">Filtri Report</CardTitle>
+          <Card className="shadow-md border-border/50 rounded-2xl">
+            <CardHeader className="space-y-1 pb-6">
+              <CardTitle className="flex items-center gap-2.5 text-xl md:text-2xl">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10">
+                  <User className="h-5 w-5 text-primary" />
+                </div>
+                Filtri Report Dipendenti
+              </CardTitle>
               <CardDescription>
                 Seleziona tipo di periodo e lavoratori per generare il report
               </CardDescription>
@@ -916,10 +916,10 @@ export function ReportGenerator() {
                         <button
                           type="button"
                           onClick={() => removeWorker(w.id)}
-                          className="ml-0.5 rounded-full p-0.5 hover:bg-destructive/20 hover:text-destructive transition-colors"
+                          className="ml-0.5 rounded-full p-1.5 h-7 w-7 flex items-center justify-center hover:bg-destructive/20 hover:text-destructive transition-colors"
                           aria-label={`Rimuovi ${w.name}`}
                         >
-                          <X className="h-3 w-3" />
+                          <X className="h-3.5 w-3.5" />
                         </button>
                       </Badge>
                     ))}
@@ -930,9 +930,14 @@ export function ReportGenerator() {
           </Card>
 
           {selectedWorkerIds.size > 0 && employeeLoaded && !employeeDateInvalid && (
-            <Card className="shadow-md border-border/50 rounded-2xl overflow-hidden">
-              <CardHeader className="pb-4">
-                <CardTitle className="text-base">Anteprima Report</CardTitle>
+            <Card className="shadow-md border-border/50 rounded-2xl">
+              <CardHeader className="space-y-1 pb-6">
+                <CardTitle className="flex items-center gap-2.5 text-xl md:text-2xl">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10">
+                    <User className="h-5 w-5 text-primary" />
+                  </div>
+                  Anteprima Report
+                </CardTitle>
                 <CardDescription>
                   {employeePeriodLabel} — {selectedWorkerIds.size} lavoratore{(selectedWorkerIds.size > 1 ? " selezionati" : " selezionato")}
                 </CardDescription>
@@ -1037,16 +1042,16 @@ export function ReportGenerator() {
 
         {/* Client tab */}
         <TabsContent value="client" className="space-y-4">
-          <Card className="shadow-md border-border/50 rounded-2xl border-t-4 border-t-emerald-600">
-            <CardHeader className="pb-4">
-              <div className="flex items-center gap-2">
-                <Badge variant="success" className="rounded-lg text-xs font-semibold uppercase tracking-wide">
-                  Report Clienti
-                </Badge>
-              </div>
-              <CardTitle className="text-base">Filtri Report Cliente</CardTitle>
+          <Card className="shadow-md border-border/50 rounded-2xl">
+            <CardHeader className="space-y-1 pb-6">
+              <CardTitle className="flex items-center gap-2.5 text-xl md:text-2xl">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10">
+                  <Building2 className="h-5 w-5 text-primary" />
+                </div>
+                Filtri Report Clienti
+              </CardTitle>
               <CardDescription>
-                Seleziona tipo de periodo e clienti per generare il report
+                Seleziona tipo di periodo e clienti per generare il report
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -1186,10 +1191,10 @@ export function ReportGenerator() {
                         <button
                           type="button"
                           onClick={() => removeClient(c.id)}
-                          className="ml-0.5 rounded-full p-0.5 hover:bg-destructive/20 hover:text-destructive transition-colors"
+                          className="ml-0.5 rounded-full p-1.5 h-7 w-7 flex items-center justify-center hover:bg-destructive/20 hover:text-destructive transition-colors"
                           aria-label={`Rimuovi ${c.name}`}
                         >
-                          <X className="h-3 w-3" />
+                          <X className="h-3.5 w-3.5" />
                         </button>
                       </Badge>
                     ))}
@@ -1200,9 +1205,14 @@ export function ReportGenerator() {
           </Card>
 
           {selectedClientIds.size > 0 && clientLoaded && !clientDateInvalid && (
-            <Card className="shadow-md border-border/50 rounded-2xl overflow-hidden">
-              <CardHeader className="pb-4">
-                <CardTitle className="text-base">Anteprima Report</CardTitle>
+            <Card className="shadow-md border-border/50 rounded-2xl">
+              <CardHeader className="space-y-1 pb-6">
+                <CardTitle className="flex items-center gap-2.5 text-xl md:text-2xl">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10">
+                    <Building2 className="h-5 w-5 text-primary" />
+                  </div>
+                  Anteprima Report
+                </CardTitle>
                 <CardDescription>
                   {clientPeriodLabel} — {selectedClientIds.size} cliente{(selectedClientIds.size > 1 ? " selezionati" : " selezionato")}
                 </CardDescription>
