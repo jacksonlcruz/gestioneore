@@ -84,7 +84,7 @@ export function AutocompleteInput({
       onSelect?.(item)
       setOpen(false)
       setHighlightedIndex(-1)
-      inputRef.current?.focus()
+      inputRef.current?.blur()
     },
     [clearOnSelect, onValueChange, onSelect]
   )
@@ -181,9 +181,9 @@ export function AutocompleteInput({
               id="autocomplete-list"
               role="listbox"
               className={cn(
-                "absolute left-0 right-0 top-full z-50 mt-1",
-                "max-h-60 overflow-y-auto rounded-lg border bg-popover p-1",
-                "text-sm text-popover-foreground shadow-md",
+                "absolute left-0 right-0 top-full z-50 mt-1.5",
+                "max-h-56 overflow-y-auto rounded-xl border border-border/60 bg-popover p-1.5",
+                "text-sm text-popover-foreground shadow-lg backdrop-blur-sm",
                 "animate-in fade-in-0 zoom-in-95"
               )}
             >
@@ -199,12 +199,15 @@ export function AutocompleteInput({
                     role="option"
                     aria-selected={index === highlightedIndex}
                     className={cn(
-                      "relative flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none select-none",
+                      "relative flex cursor-pointer items-center justify-between rounded-lg px-3 py-2 text-sm outline-none select-none transition-colors",
                       index === highlightedIndex
-                        ? "bg-muted text-foreground"
-                        : "text-foreground"
+                        ? "bg-accent text-accent-foreground font-medium"
+                        : "hover:bg-accent/50 text-foreground"
                     )}
-                    onClick={() => handleSelect(item)}
+                    onMouseDown={(e) => {
+                      e.preventDefault()
+                      handleSelect(item)
+                    }}
                     onMouseEnter={() => setHighlightedIndex(index)}
                   >
                     <span className="flex-1 truncate">{item.label}</span>
