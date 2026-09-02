@@ -491,7 +491,7 @@ export function RegistroList() {
       </div>
 
       {/* Filtri */}
-      <Card className="shadow-md border-border/50 rounded-2xl">
+      <Card className="shadow-md border-border/50 rounded-2xl overflow-visible">
         <CardHeader className="pb-4">
           <CardTitle className="text-base">Filtri</CardTitle>
           <CardDescription>
@@ -500,7 +500,7 @@ export function RegistroList() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            <div className="space-y-2">
+            <div className="relative z-20 space-y-2">
               <Label className="text-sm font-medium">Filtra per cliente</Label>
               <AutocompleteInput
                 items={clients.map((c) => ({ label: c.name, value: c.id }))}
@@ -512,7 +512,7 @@ export function RegistroList() {
               />
             </div>
 
-            <div className="space-y-2">
+            <div className="relative z-20 space-y-2">
               <Label className="text-sm font-medium">Filtra per partecipante</Label>
               <AutocompleteInput
                 items={workers.map((w) => ({

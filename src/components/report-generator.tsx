@@ -766,7 +766,7 @@ export function ReportGenerator() {
 
         {/* Employee tab */}
         <TabsContent value="employee" className="space-y-4">
-          <Card className="shadow-md border-border/50 rounded-2xl">
+          <Card className="shadow-md border-border/50 rounded-2xl overflow-visible">
             <CardHeader className="space-y-1 pb-6">
               <CardTitle className="flex items-center gap-2.5 text-xl md:text-2xl">
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10">
@@ -859,7 +859,7 @@ export function ReportGenerator() {
                 </p>
               )}
 
-              <div className="space-y-3">
+              <div className="relative z-20 space-y-3">
                 <div className="flex items-center justify-between">
                   <Label className="text-sm font-medium">Lavoratori</Label>
                   <span className="text-sm text-muted-foreground">
@@ -1042,7 +1042,7 @@ export function ReportGenerator() {
 
         {/* Client tab */}
         <TabsContent value="client" className="space-y-4">
-          <Card className="shadow-md border-border/50 rounded-2xl">
+          <Card className="shadow-md border-border/50 rounded-2xl overflow-visible">
             <CardHeader className="space-y-1 pb-6">
               <CardTitle className="flex items-center gap-2.5 text-xl md:text-2xl">
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10">
@@ -1137,7 +1137,7 @@ export function ReportGenerator() {
                 </p>
               )}
 
-              <div className="space-y-3">
+              <div className="relative z-20 space-y-3">
                 <div className="flex items-center justify-between">
                   <Label className="text-sm font-medium">Clienti</Label>
                   <span className="text-sm text-muted-foreground">
