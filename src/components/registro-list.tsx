@@ -58,6 +58,7 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs"
 import { toast } from "@/components/ui/toast"
+import { mergeObservations } from "@/lib/registri-utils"
 
 type Client = Database["public"]["Tables"]["clients"]["Row"]
 type Profile = Database["public"]["Tables"]["profiles"]["Row"]
@@ -86,6 +87,19 @@ type ServiceRecord =
   }
 
 type Participant = ServiceRecord["service_participants"][number]
+
+// A merged view of one or more service records that share the same slot
+// (client_id + date + start_time + end_time). Used to render consolidated rows.
+type GroupedServiceRecord = {
+  key: string
+  records: ServiceRecord[]
+  clients: { name: string } | null
+  date: string
+  start_time: string
+  end_time: string
+  observation: string | null
+  participants: Participant[]
+}
 
 function formatDate(isoDate: string): string {
   const [year, month, day] = isoDate.split("-")
@@ -350,6 +364,47 @@ export function RegistroList() {
       (c.description ?? "").toLowerCase().includes(searchLower)
     )
   }, [extraCosts, filterSearchText])
+
+  // Group records that share the same client + date + time slot so legacy
+  // duplicates are rendered as a single consolidated row (combined
+  // collaborators and notes joined with " | ").
+  const groupedRecords = useMemo(() => {
+    const groups: GroupedServiceRecord[] = []
+    const index = new Map<string, GroupedServiceRecord>()
+
+    for (const record of filteredRecords) {
+      const key = `${record.client_id}|${record.date}|${record.start_time}|${record.end_time}`
+      const existing = index.get(key)
+      if (existing) {
+        existing.records.push(record)
+        existing.observation = mergeObservations([existing.observation, record.observation])
+        for (const participant of record.service_participants) {
+          const participantKey = `${participant.worker_type}:${participant.profile_id ?? participant.freelancer_id ?? participant.id}`
+          const alreadyPresent = existing.participants.some((p) =>
+            `${p.worker_type}:${p.profile_id ?? p.freelancer_id ?? p.id}` === participantKey
+          )
+          if (!alreadyPresent) {
+            existing.participants.push(participant)
+          }
+        }
+      } else {
+        index.set(key, {
+          key,
+          records: [record],
+          clients: record.clients,
+          date: record.date,
+          start_time: record.start_time,
+          end_time: record.end_time,
+          observation: record.observation,
+          participants: [...record.service_participants],
+        })
+        groups.push(index.get(key)!)
+      }
+    }
+    return groups
+  }, [filteredRecords])
+
+  const isSingleRecord = (group: GroupedServiceRecord) => group.records.length === 1
 
   function clearFilters() {
     setFilterClientId("")
@@ -616,23 +671,27 @@ export function RegistroList() {
             <>
               {/* Mobile: Cards */}
               <div className="space-y-3 md:hidden">
-                {filteredRecords.map((record) => (
-                  <Card key={record.id} className="shadow-sm border-border/50 rounded-xl overflow-hidden">
+                {groupedRecords.map((group) => (
+                  <Card key={group.key} className="shadow-sm border-border/50 rounded-xl overflow-hidden">
                     <CardContent className="space-y-3 pt-4">
                       <div className="flex items-start justify-between gap-2">
                         <div className="space-y-1">
-                          <p className="font-semibold text-[15px]">{record.clients?.name}</p>
+                          <p className="font-semibold text-[15px]">{group.clients?.name}</p>
                           <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                             <CalendarDays className="h-3.5 w-3.5" />
-                            {formatDate(record.date)}
+                            {formatDate(group.date)}
                           </div>
                         </div>
-                        {canManage(record) && (
+                        {group.records.length > 1 ? (
+                          <Badge variant="outline" className="shrink-0 rounded-lg text-[11px] font-normal">
+                            {group.records.length} registrazioni unite
+                          </Badge>
+                        ) : isSingleRecord(group) && canManage(group.records[0]) ? (
                           <div className="flex gap-1">
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => openEditDialog(record)}
+                              onClick={() => openEditDialog(group.records[0])}
                               aria-label="Modifica registrazione"
                               className="rounded-lg min-h-[44px] min-w-[44px]"
                             >
@@ -641,29 +700,29 @@ export function RegistroList() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => setDeleteTarget(record)}
+                              onClick={() => setDeleteTarget(group.records[0])}
                               aria-label="Elimina registrazione"
                               className="text-destructive rounded-lg min-h-[44px] min-w-[44px]"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
-                        )}
+                        ) : null}
                       </div>
 
                       <div className="flex items-center gap-2 rounded-lg bg-muted/40 px-3 py-2">
                         <Clock className="h-4 w-4 text-primary" />
                         <p className="text-sm font-medium">
-                          {formatTime(record.start_time)} - {formatTime(record.end_time)}{" "}
+                          {formatTime(group.start_time)} - {formatTime(group.end_time)}{" "}
                           <span className="text-muted-foreground font-normal">
-                            ({calculateDuration(record.start_time, record.end_time)})
+                            ({calculateDuration(group.start_time, group.end_time)})
                           </span>
                         </p>
                       </div>
 
-                      {record.service_participants.length > 0 && (
+                      {group.participants.length > 0 && (
                         <div className="flex flex-wrap gap-1.5">
-                          {record.service_participants.map((p) => (
+                          {group.participants.map((p) => (
                             <Badge
                               key={p.id}
                               variant={p.worker_type === "employee" ? "team" : "freelancer"}
@@ -675,9 +734,9 @@ export function RegistroList() {
                         </div>
                       )}
 
-                      {record.observation && (
+                      {group.observation && (
                         <p className="text-sm text-muted-foreground border-t border-border/40 pt-2">
-                          {record.observation}
+                          {group.observation}
                         </p>
                       )}
                     </CardContent>
@@ -700,25 +759,25 @@ export function RegistroList() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredRecords.map((record, index) => (
-                        <TableRow key={record.id} className={index % 2 === 1 ? "bg-muted/20" : ""}>
+                      {groupedRecords.map((group, index) => (
+                        <TableRow key={group.key} className={index % 2 === 1 ? "bg-muted/20" : ""}>
                           <TableCell className="whitespace-nowrap">
-                            {formatDate(record.date)}
+                            {formatDate(group.date)}
                           </TableCell>
                           <TableCell className="font-medium">
-                            {record.clients?.name}
+                            {group.clients?.name}
                           </TableCell>
                           <TableCell className="whitespace-nowrap">
-                            {formatTime(record.start_time)} -{" "}
-                            {formatTime(record.end_time)}
+                            {formatTime(group.start_time)} -{" "}
+                            {formatTime(group.end_time)}
                             <span className="block text-xs text-muted-foreground">
-                              {calculateDuration(record.start_time, record.end_time)}
+                              {calculateDuration(group.start_time, group.end_time)}
                             </span>
                           </TableCell>
                           <TableCell>
                             <div className="flex flex-wrap gap-1.5">
-                              {record.service_participants.length > 0 ? (
-                                record.service_participants.map((p) => (
+                              {group.participants.length > 0 ? (
+                                group.participants.map((p) => (
                                   <Badge
                                     key={p.id}
                                     variant={p.worker_type === "employee" ? "team" : "freelancer"}
@@ -735,19 +794,23 @@ export function RegistroList() {
                             </div>
                           </TableCell>
                           <TableCell className="max-w-[200px] truncate">
-                            {record.observation || (
+                            {group.observation || (
                               <span className="text-xs text-muted-foreground">
                                 —
                               </span>
                             )}
                           </TableCell>
                           <TableCell className="text-right">
-                            {canManage(record) && (
+                            {group.records.length > 1 ? (
+                              <Badge variant="outline" className="rounded-lg text-[11px] font-normal">
+                                {group.records.length} uniti
+                              </Badge>
+                            ) : isSingleRecord(group) && canManage(group.records[0]) ? (
                               <div className="flex justify-end gap-1">
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  onClick={() => openEditDialog(record)}
+                                  onClick={() => openEditDialog(group.records[0])}
                                   aria-label="Modifica registrazione"
                                   className="rounded-lg"
                                 >
@@ -756,14 +819,14 @@ export function RegistroList() {
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  onClick={() => setDeleteTarget(record)}
+                                  onClick={() => setDeleteTarget(group.records[0])}
                                   aria-label="Elimina registrazione"
                                   className="text-destructive rounded-lg"
                                 >
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
                               </div>
-                            )}
+                            ) : null}
                           </TableCell>
                         </TableRow>
                       ))}
