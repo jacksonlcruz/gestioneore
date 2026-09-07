@@ -53,6 +53,7 @@ import {
   type ClientReportData,
 } from "@/components/pdf/client-report-pdf"
 import { toast } from "@/components/ui/toast"
+import { groupDuplicateEntries } from "@/lib/registri-utils"
 
 type Client = Database["public"]["Tables"]["clients"]["Row"]
 type Freelancer = Database["public"]["Tables"]["freelancers"]["Row"]
@@ -106,12 +107,6 @@ function monthBounds(label: string): { start: string; end: string } {
   return { start, end }
 }
 
-function toDurationHours(startTime: string, endTime: string): number {
-  const [sh, sm] = startTime.split(":").map(Number)
-  const [eh, em] = endTime.split(":").map(Number)
-  return (eh * 60 + em - (sh * 60 + sm)) / 60
-}
-
 function formatTime(time: string): string {
   return time.slice(0, 5)
 }
@@ -138,16 +133,7 @@ function formatPeriodLabel(
   }
 }
 
-function mergeObservations(observations: Array<string | null>): string {
-  const unique = Array.from(
-    new Set(
-      observations
-        .filter((o): o is string => !!o && o.trim() !== "" && o.trim() !== "-")
-        .map((o) => o.trim())
-    )
-  )
-  return unique.join(" / ")
-}
+
 
 function groupClientRecords(
   records: Array<{
@@ -162,55 +148,32 @@ function groupClientRecords(
     }>
   }>
 ): ClientReportRow[] {
-  const groups = new Map<
-    string,
-    {
-      date: string
-      start_time: string
-      end_time: string
-      observations: Array<string | null>
-      participants: string[]
-    }
-  >()
-
-  for (const r of records) {
-    const key = `${r.date}|${r.start_time}|${r.end_time}`
-    const existing = groups.get(key)
-    const participantNames = r.service_participants.map((p) => {
+  // Reuse the shared utility to consolidate legacy duplicate slots
+  // (client_id + date + start_time + end_time): unique participants and
+  // notes joined with " | ". Hours are computed once per slot.
+  const groupable = records.map((r) => ({
+    client_id: r.client_id,
+    date: r.date,
+    start_time: r.start_time,
+    end_time: r.end_time,
+    observation: r.observation,
+    participants: r.service_participants.map((p) => {
       if (p.profiles?.full_name) return p.profiles.full_name
       if (p.freelancers?.name) return p.freelancers.name
       return "Sconosciuto"
-    })
+    }),
+  }))
 
-    if (existing) {
-      existing.observations.push(r.observation)
-      for (const name of participantNames) {
-        if (!existing.participants.includes(name)) {
-          existing.participants.push(name)
-        }
-      }
-    } else {
-      groups.set(key, {
-        date: r.date,
-        start_time: r.start_time,
-        end_time: r.end_time,
-        observations: [r.observation],
-        participants: participantNames,
-      })
-    }
-  }
-
-  return Array.from(groups.values()).map((g) => {
-    const shiftHours = toDurationHours(g.start_time, g.end_time)
-    return {
-      date: formatDateDDMMYYYY(g.date),
-      participants: g.participants,
-      startTime: formatTime(g.start_time),
-      endTime: formatTime(g.end_time),
-      durationHours: shiftHours * g.participants.length,
-      observation: mergeObservations(g.observations) || null,
-    }
-  })
+  return groupDuplicateEntries(groupable).map((g) => ({
+    date: formatDateDDMMYYYY(g.date),
+    participants: g.participants,
+    startTime: formatTime(g.start_time),
+    endTime: formatTime(g.end_time),
+    // Preserve the existing per-participant billing while guaranteeing
+    // identical duplicate slots are consolidated (counted once, not twice).
+    durationHours: g.durationHours * g.participants.length,
+    observation: g.observation,
+  }))
 }
 
 function getPeriodBounds(
@@ -439,6 +402,7 @@ export function ReportGenerator() {
 
       const map = new Map<string, EmployeeReportRow[]>()
       const allRecords = (records ?? []) as Array<{
+        client_id: string
         date: string
         start_time: string
         end_time: string
@@ -450,6 +414,14 @@ export function ReportGenerator() {
         }>
       }>
 
+      // Lookup table to resolve client names once.
+      const clientNames = new Map<string, string>()
+      for (const r of allRecords) {
+        if (r.client_id && !clientNames.has(r.client_id)) {
+          clientNames.set(r.client_id, r.clients?.name ?? "-")
+        }
+      }
+
       for (const wid of selectedWorkerIds) {
         const [type, id] = wid.split(":")
         const matchingRecords = allRecords.filter((r) =>
@@ -459,13 +431,25 @@ export function ReportGenerator() {
               : p.freelancer_id === id
           )
         )
-        const rows = matchingRecords.map((r) => ({
-          date: formatDateDDMMYYYY(r.date),
-          clientName: r.clients?.name ?? "-",
-          startTime: formatTime(r.start_time),
-          endTime: formatTime(r.end_time),
-          durationHours: toDurationHours(r.start_time, r.end_time),
-          observation: r.observation,
+
+        // Deduplicate legacy duplicate shifts for this single employee:
+        // entries matching date + client + start_time + end_time are merged
+        // (notes joined with " | ") and the slot duration is counted once.
+        const rows = groupDuplicateEntries(
+          matchingRecords.map((r) => ({
+            client_id: r.client_id,
+            date: r.date,
+            start_time: r.start_time,
+            end_time: r.end_time,
+            observation: r.observation,
+          }))
+        ).map((g) => ({
+          date: formatDateDDMMYYYY(g.date),
+          clientName: clientNames.get(g.client_id) ?? "-",
+          startTime: formatTime(g.start_time),
+          endTime: formatTime(g.end_time),
+          durationHours: g.durationHours,
+          observation: g.observation,
         }))
         map.set(wid, rows)
       }
