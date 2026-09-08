@@ -1078,7 +1078,9 @@ export function GestioneManager() {
             <DialogTitle>{entityDialogTitle}</DialogTitle>
             <DialogDescription>
               {entityDialog.mode === "create"
-                ? `Inserisci i dati del nuovo ${entityDialog.kind === "client" ? "cliente" : "collaboratore"}`
+                ? (entityDialog.kind === "client"
+                    ? "Inserisci il nome e la tariffa oraria del nuovo cliente"
+                    : "Inserisci i dati del nuovo collaboratore")
                 : `Modifica i dati del ${entityDialog.kind === "client" ? "cliente" : "collaboratore"}`}
             </DialogDescription>
           </DialogHeader>
@@ -1094,15 +1096,15 @@ export function GestioneManager() {
           </div>
           {entityDialog.kind === "client" && (
             <div className="space-y-2">
-              <Label htmlFor="entity-hourly-rate">Tariffa Oraria Predefinita (€/h)</Label>
+              <Label htmlFor="entity-hourly-rate">Tariffa oraria (€/h)</Label>
               <Input
                 id="entity-hourly-rate"
                 type="number"
-                step="0.50"
+                step="0.01"
                 min={0}
                 value={entityDialog.hourlyRate}
                 onChange={(e) => setEntityDialog((p) => ({ ...p, hourlyRate: e.target.value }))}
-                placeholder="Es. 25,00"
+                placeholder="Es. 25.00"
               />
             </div>
           )}

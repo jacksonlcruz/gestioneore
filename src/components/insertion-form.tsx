@@ -115,6 +115,7 @@ export function InsertionForm() {
 
   const [isNewClientOpen, setIsNewClientOpen] = useState(false)
   const [newClientName, setNewClientName] = useState("")
+  const [newClientHourlyRate, setNewClientHourlyRate] = useState("")
   const [isNewFreelancerOpen, setIsNewFreelancerOpen] = useState(false)
   const [newFreelancerName, setNewFreelancerName] = useState("")
 
@@ -205,9 +206,21 @@ export function InsertionForm() {
     const name = newClientName.trim()
     if (!name) return
 
+    // Parse hourly rate (€/h); empty or non-numeric values default to 0.
+    const hourlyRate = Number(newClientHourlyRate)
+    const safeHourlyRate = Number.isNaN(hourlyRate) ? 0 : hourlyRate
+    if (safeHourlyRate < 0) {
+      toast.add({
+        title: "Errore",
+        description: "La tariffa oraria non può essere negativa",
+        type: "error",
+      })
+      return
+    }
+
     const { data, error } = await supabase
       .from("clients")
-      .insert({ name })
+      .insert({ name, hourly_rate: safeHourlyRate })
       .select()
       .single()
 
@@ -223,6 +236,7 @@ export function InsertionForm() {
     setClients((prev) => [...prev, data])
     form.setValue("clientId", data.id)
     setNewClientName("")
+    setNewClientHourlyRate("")
     setIsNewClientOpen(false)
     toast.add({
       title: "Cliente creato",
@@ -1017,7 +1031,7 @@ export function InsertionForm() {
           <DialogHeader>
             <DialogTitle>Nuovo Cliente</DialogTitle>
             <DialogDescription>
-              Inserisci il nome del nuovo cliente
+              Inserisci il nome e la tariffa oraria del nuovo cliente
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
@@ -1027,6 +1041,18 @@ export function InsertionForm() {
               value={newClientName}
               onChange={(e) => setNewClientName(e.target.value)}
               placeholder="Es. Campeggio Max"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="new-client-hourly-rate">Tariffa oraria (€/h)</Label>
+            <Input
+              id="new-client-hourly-rate"
+              type="number"
+              step="0.01"
+              min={0}
+              value={newClientHourlyRate}
+              onChange={(e) => setNewClientHourlyRate(e.target.value)}
+              placeholder="Es. 25.00"
             />
           </div>
           <DialogFooter className="flex-col-reverse sm:flex-row sm:justify-end gap-2">
