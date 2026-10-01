@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useEffect, useMemo, useState } from "react"
 import { useForm } from "react-hook-form"
@@ -791,7 +791,7 @@ export function InsertionForm() {
                         <Users className="h-4 w-4 text-primary" />
                       </div>
                       <div>
-                        <Label className="text-sm font-medium">Partecipanti al Servizio</Label>
+                        <Label className="text-sm md:text-base font-medium">Partecipanti al Servizio</Label>
                         <p className="text-xs text-muted-foreground">
                           Seleziona colleghi o collaboratori che hanno lavorato insieme
                         </p>
@@ -799,7 +799,7 @@ export function InsertionForm() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label className="text-sm text-muted-foreground">Dipendenti</Label>
+                      <Label className="text-sm md:text-base text-muted-foreground">Dipendenti</Label>
                       <AutocompleteInput
                         items={employeeItems}
                         placeholder="Inizia a digitare il nome..."
@@ -819,7 +819,7 @@ export function InsertionForm() {
                             <Badge
                               key={emp.value}
                               variant="team"
-                              className="gap-1.5 pr-1.5 py-1 rounded-lg text-sm font-normal"
+                              className="gap-1.5 pr-1.5 py-1 rounded-lg text-sm md:text-base font-normal"
                             >
                               <div className="flex h-5 w-5 items-center justify-center rounded-md bg-primary/10">
                                 <Users className="h-3 w-3 text-primary" />
@@ -842,7 +842,7 @@ export function InsertionForm() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label className="text-sm text-muted-foreground">Collaboratori Occasionali</Label>
+                      <Label className="text-sm md:text-base text-muted-foreground">Collaboratori Occasionali</Label>
                       <AutocompleteInput
                         items={freelancerItems}
                         placeholder="Inizia a digitare il nome..."
@@ -874,7 +874,7 @@ export function InsertionForm() {
                             <Badge
                               key={frl.value}
                               variant="freelancer"
-                              className="gap-1.5 pr-1.5 py-1 rounded-lg text-sm font-normal"
+                              className="gap-1.5 pr-1.5 py-1 rounded-lg text-sm md:text-base font-normal"
                             >
                               <div className="flex h-5 w-5 items-center justify-center rounded-md bg-primary/10">
                                 <UserPlus className="h-3 w-3 text-primary" />

@@ -929,7 +929,7 @@ export function ReportGenerator() {
                           <User className="h-3 w-3 text-primary" />
                         </div>
                         {w.name}
-                        <span className="text-[10px] text-muted-foreground ml-0.5">
+                        <span className="text-xs md:text-sm text-muted-foreground ml-0.5">
                           {w.type === "freelancer" ? "Collaboratore" : "Dipendente"}
                         </span>
                         <button
@@ -976,7 +976,7 @@ export function ReportGenerator() {
                         </div>
                         <div>
                           <p className="text-sm font-semibold">{worker.name}</p>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-xs md:text-sm text-muted-foreground">
                             {worker.type === "freelancer" ? "Collaboratore" : "Dipendente"}
                           </p>
                         </div>
@@ -992,23 +992,23 @@ export function ReportGenerator() {
                             <Table>
                               <TableHeader>
                                 <TableRow className="bg-muted/30 hover:bg-muted/30">
-                                  <TableHead className="font-semibold text-xs">Data</TableHead>
-                                  <TableHead className="font-semibold text-xs">Cliente</TableHead>
-                                  <TableHead className="font-semibold text-xs">Orario</TableHead>
-                                  <TableHead className="font-semibold text-xs">Durata (ore)</TableHead>
-                                  <TableHead className="font-semibold text-xs">Note</TableHead>
+                                  <TableHead className="font-semibold text-xs md:text-sm md:font-medium">Data</TableHead>
+                                  <TableHead className="font-semibold text-xs md:text-sm md:font-medium">Cliente</TableHead>
+                                  <TableHead className="font-semibold text-xs md:text-sm md:font-medium">Orario</TableHead>
+                                  <TableHead className="font-semibold text-xs md:text-sm md:font-medium">Durata (ore)</TableHead>
+                                  <TableHead className="font-semibold text-xs md:text-sm md:font-medium">Note</TableHead>
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
                                 {rows.map((row, i) => (
                                   <TableRow key={i} className={i % 2 === 1 ? "bg-muted/20" : ""}>
-                                    <TableCell className="text-xs whitespace-nowrap">{row.date}</TableCell>
-                                    <TableCell className="text-xs font-medium">{row.clientName}</TableCell>
-                                    <TableCell className="text-xs whitespace-nowrap">
+                                    <TableCell className="text-xs md:text-sm whitespace-nowrap">{row.date}</TableCell>
+                                    <TableCell className="text-xs md:text-sm font-medium">{row.clientName}</TableCell>
+                                    <TableCell className="text-xs md:text-sm whitespace-nowrap">
                                       {row.startTime} - {row.endTime}
                                     </TableCell>
-                                    <TableCell className="text-xs font-medium">{row.durationHours.toFixed(2)}</TableCell>
-                                    <TableCell className="text-xs max-w-[150px] truncate">
+                                    <TableCell className="text-xs md:text-sm font-medium">{row.durationHours.toFixed(2)}</TableCell>
+                                    <TableCell className="text-xs md:text-sm max-w-[150px] truncate">
                                       {row.observation || <span className="text-muted-foreground">—</span>}
                                     </TableCell>
                                   </TableRow>
@@ -1016,7 +1016,7 @@ export function ReportGenerator() {
                               </TableBody>
                             </Table>
                           </div>
-                          <p className="text-xs font-semibold text-right ml-9">
+                          <p className="text-xs md:text-sm font-semibold text-right ml-9">
                             Totale: <span className="text-primary">{total.toFixed(2)} ore</span>
                           </p>
                         </>
@@ -1027,13 +1027,13 @@ export function ReportGenerator() {
 
                 <div className="flex flex-col gap-4 rounded-xl bg-muted/30 p-4 sm:flex-row sm:items-center sm:justify-between border border-border/50">
                   <div className="space-y-1">
-                    <p className="text-sm font-semibold">
+                    <p className="text-sm md:text-base font-semibold">
                       Totale Generale:{" "}
                       <span className="text-primary">
                         {totalAllWorkers.toFixed(2)} ore
                       </span>
                     </p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs md:text-sm text-muted-foreground">
                       {workersData.length} report generati
                     </p>
                   </div>
@@ -1286,29 +1286,29 @@ export function ReportGenerator() {
                             <Table>
                               <TableHeader>
                                 <TableRow className="bg-muted/50 hover:bg-muted/50">
-                                  <TableHead className="font-semibold text-xs">Data</TableHead>
-                                  <TableHead className="font-semibold text-xs">Partecipanti</TableHead>
-                                  <TableHead className="font-semibold text-xs">
+                                  <TableHead className="font-semibold text-xs md:text-sm md:font-medium">Data</TableHead>
+                                  <TableHead className="font-semibold text-xs md:text-sm md:font-medium">Partecipanti</TableHead>
+                                  <TableHead className="font-semibold text-xs md:text-sm md:font-medium">
                                     {hideTimes ? "Durata (ore)" : "Orario / Durata"}
                                   </TableHead>
-                                  <TableHead className="font-semibold text-xs">Note</TableHead>
-                                  {isAdmin && <TableHead className="w-[50px] text-right font-semibold text-xs">Azioni</TableHead>}
+                                  <TableHead className="font-semibold text-xs md:text-sm md:font-medium">Note</TableHead>
+                                  {isAdmin && <TableHead className="w-[50px] text-right font-semibold text-xs md:text-sm md:font-medium">Azioni</TableHead>}
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
                                 {rows.map((row, i) => (
                                   <TableRow key={i} className={i % 2 === 1 ? "bg-muted/20" : ""}>
-                                    <TableCell className="text-xs whitespace-nowrap">{row.date}</TableCell>
+                                    <TableCell className="text-xs md:text-sm whitespace-nowrap">{row.date}</TableCell>
                                     <TableCell>
                                       <div className="flex flex-wrap gap-1.5">
                                         {row.participants.map((p, j) => (
-                                          <Badge key={j} variant="secondary" className="rounded-lg text-[10px] font-normal">
+                                          <Badge key={j} variant="secondary" className="rounded-lg text-xs md:text-sm font-normal">
                                             {p}
                                           </Badge>
                                         ))}
                                       </div>
                                     </TableCell>
-                                    <TableCell className="text-xs whitespace-nowrap">
+                                    <TableCell className="text-xs md:text-sm whitespace-nowrap">
                                       {hideTimes ? (
                                         <span className="font-medium">
                                           {row.durationHours.toFixed(2)} ore
@@ -1322,7 +1322,7 @@ export function ReportGenerator() {
                                         </>
                                       )}
                                     </TableCell>
-                                    <TableCell className="text-xs max-w-[150px] truncate">
+                                    <TableCell className="text-xs md:text-sm max-w-[150px] truncate">
                                       {row.observation || <span className="text-muted-foreground">—</span>}
                                     </TableCell>
                                     {isAdmin && (
@@ -1343,7 +1343,7 @@ export function ReportGenerator() {
                               </TableBody>
                             </Table>
                           </div>
-                          <p className="text-xs font-semibold text-right ml-9">
+                          <p className="text-xs md:text-sm font-semibold text-right ml-9">
                             Totale: <span className="text-primary">{total.toFixed(2)} ore</span>
                           </p>
                         </>
@@ -1352,24 +1352,24 @@ export function ReportGenerator() {
                       {/* Costi Extra per cliente */}
                       {extraCosts.length > 0 && (
                         <div className="ml-9 space-y-2 mt-4">
-                          <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">
+                          <p className="text-xs md:text-sm font-semibold text-amber-700 dark:text-amber-400">
                             Costi Extra / Materiali
                           </p>
                           <div className="overflow-x-auto rounded-lg border border-amber-200 dark:border-amber-800/40 bg-amber-50 dark:bg-amber-950/20">
                             <Table>
                               <TableHeader>
                                 <TableRow className="bg-amber-100/50 dark:bg-amber-900/30 hover:bg-amber-100/50 dark:hover:bg-amber-900/30">
-                                  <TableHead className="font-semibold text-xs">Data</TableHead>
-                                  <TableHead className="font-semibold text-xs">Descrizione</TableHead>
-                                  <TableHead className="font-semibold text-xs text-right">Importo (€)</TableHead>
+                                  <TableHead className="font-semibold text-xs md:text-sm md:font-medium">Data</TableHead>
+                                  <TableHead className="font-semibold text-xs md:text-sm md:font-medium">Descrizione</TableHead>
+                                  <TableHead className="font-semibold text-xs md:text-sm md:font-medium text-right">Importo (€)</TableHead>
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
                                 {extraCosts.map((cost, i) => (
                                   <TableRow key={`extra-${i}`} className={i % 2 === 1 ? "bg-muted/20" : ""}>
-                                    <TableCell className="text-xs whitespace-nowrap">{cost.date}</TableCell>
-                                    <TableCell className="text-xs">{cost.description}</TableCell>
-                                    <TableCell className="text-xs font-semibold text-right">
+                                    <TableCell className="text-xs md:text-sm whitespace-nowrap">{cost.date}</TableCell>
+                                    <TableCell className="text-xs md:text-sm">{cost.description}</TableCell>
+                                    <TableCell className="text-xs md:text-sm font-semibold text-right">
                                       {cost.amount.toFixed(2).replace(".", ",")} €
                                     </TableCell>
                                   </TableRow>
@@ -1377,7 +1377,7 @@ export function ReportGenerator() {
                               </TableBody>
                             </Table>
                           </div>
-                          <p className="text-xs font-semibold text-right">
+                          <p className="text-xs md:text-sm font-semibold text-right">
                             Totale Costi Extra:{" "}
                             <span className="text-amber-700 dark:text-amber-400">
                               {totalExtraCosts.toFixed(2).replace(".", ",")} €
@@ -1391,13 +1391,13 @@ export function ReportGenerator() {
 
                 <div className="flex flex-col gap-4 rounded-xl bg-muted/30 p-4 sm:flex-row sm:items-center sm:justify-between border border-border/50">
                   <div className="space-y-1">
-                    <p className="text-sm font-semibold">
+                    <p className="text-sm md:text-base font-semibold">
                       Totale Generale:{" "}
                       <span className="text-primary">
                         {totalAllClients.toFixed(2)} ore
                       </span>
                     </p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs md:text-sm text-muted-foreground">
                       {clientsData.length} report generati
                     </p>
                   </div>
