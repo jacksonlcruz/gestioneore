@@ -121,6 +121,38 @@ function formatDateDDMMYYYY(isoDate: string): string {
   return `${day}/${month}/${year}`
 }
 
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // remove acentos
+    .replace(/[^a-z0-9 -]/g, "") // remove caracteres especiais
+    .trim()
+    .replace(/\s+/g, "-") // substitui espaços por hífens
+    .replace(/-+/g, "-")
+}
+
+function generateReportFileName(
+  type: "employee" | "client",
+  monthLabel: string, // ex: "Settembre 2026"
+  selectedNames: string[]
+): string {
+  const parts = monthLabel.toLowerCase().split(" ")
+  const month = parts[0] ?? "mese"
+  const year = parts[1] ?? "2026"
+
+  let namePart = ""
+  if (selectedNames.length === 1) {
+    namePart = slugify(selectedNames[0])
+  } else if (type === "employee") {
+    namePart = "tutti-i-lavoratori"
+  } else {
+    namePart = "tutti-i-clienti"
+  }
+
+  return `report-mensile-${month}-${year}-${namePart}.pdf`
+}
+
 function formatPeriodLabel(
   type: PeriodType,
   monthLabel: string,
@@ -1045,7 +1077,11 @@ export function ReportGenerator() {
                         periodLabel={employeePeriodLabel}
                       />
                     }
-                    fileName={`report-${employeePeriodType}-cumulativo-${employeePeriodLabel.replace(/\s+/g, "-").toLowerCase()}.pdf`}
+                    fileName={generateReportFileName(
+                      "employee",
+                      employeeMonth,
+                      selectedWorkersList.map((w) => w.name)
+                    )}
                   >
                     {({ loading }) => (
                       <Button disabled={loading} className="rounded-xl shadow-sm">
@@ -1422,7 +1458,11 @@ export function ReportGenerator() {
                           hideTimes={hideTimes}
                         />
                       }
-                      fileName={`report-${clientPeriodType}-clienti-cumulativo-${clientPeriodLabel.replace(/\s+/g, "-").toLowerCase()}.pdf`}
+                      fileName={generateReportFileName(
+                        "client",
+                        clientMonth,
+                        selectedClientsList.map((c) => c.name)
+                      )}
                     >
                       {({ loading }) => (
                         <Button disabled={loading} className="rounded-xl shadow-sm">
