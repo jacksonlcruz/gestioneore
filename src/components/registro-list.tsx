@@ -8,6 +8,7 @@ import type { Database } from "@/types/database.types"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { AutocompleteInput } from "@/components/ui/autocomplete-input"
@@ -935,7 +936,7 @@ export function RegistroList() {
                               )}
                             </div>
                           </TableCell>
-                          <TableCell className="text-sm md:text-base max-w-[200px] truncate">
+                          <TableCell className="text-sm md:text-base max-w-[200px] truncate cursor-help" title={group.observation || undefined}>
                             {group.observation || (
                               <span className="text-xs md:text-sm text-muted-foreground">
                                 —
@@ -1156,13 +1157,12 @@ export function RegistroList() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-observation" className="text-sm font-medium">Note / Ubicazione</Label>
-              <Input
+              <Textarea
                 id="edit-observation"
-                type="text"
-                value={editForm.observation}
+                value={editForm.observation ?? ""}
                 onChange={(e) => setEditForm((prev) => ({ ...prev, observation: e.target.value }))}
-                placeholder="Note o ubicazione del servizio"
-                className="rounded-lg h-12"
+                placeholder="Es. POD 2, 5, 7 e 8 casa 3..."
+                className="min-h-[110px] w-full rounded-lg text-sm md:text-base p-2.5 resize-y focus-visible:ring-2"
               />
             </div>
           </div>
