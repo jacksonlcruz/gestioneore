@@ -137,6 +137,8 @@ export type Database = {
           worker_type: 'employee' | 'freelancer'
           profile_id: string | null
           freelancer_id: string | null
+          start_time: string | null
+          end_time: string | null
         }
         Insert: {
           id?: string
@@ -144,6 +146,8 @@ export type Database = {
           worker_type: 'employee' | 'freelancer'
           profile_id?: string | null
           freelancer_id?: string | null
+          start_time?: string | null
+          end_time?: string | null
         }
         Update: {
           id?: string
@@ -151,6 +155,8 @@ export type Database = {
           worker_type?: 'employee' | 'freelancer'
           profile_id?: string | null
           freelancer_id?: string | null
+          start_time?: string | null
+          end_time?: string | null
         }
         Relationships: [
           {

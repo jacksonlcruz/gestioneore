@@ -53,7 +53,11 @@ import {
   type ClientReportData,
 } from "@/components/pdf/client-report-pdf"
 import { toast } from "@/components/ui/toast"
-import { groupDuplicateEntries } from "@/lib/registri-utils"
+import {
+  groupDuplicateEntries,
+  toDurationHours,
+  type GroupableRecord,
+} from "@/lib/registri-utils"
 
 type Client = Database["public"]["Tables"]["clients"]["Row"]
 type Freelancer = Database["public"]["Tables"]["freelancers"]["Row"]
@@ -143,6 +147,8 @@ function groupClientRecords(
     end_time: string
     observation: string | null
     service_participants: Array<{
+      start_time: string | null
+      end_time: string | null
       profiles: { full_name: string | null } | null
       freelancers: { name: string } | null
     }>
@@ -150,7 +156,7 @@ function groupClientRecords(
 ): ClientReportRow[] {
   // Reuse the shared utility to consolidate legacy duplicate slots
   // (client_id + date + start_time + end_time): unique participants and
-  // notes joined with " | ". Hours are computed once per slot.
+  // notes joined with " | ". The slot hours shown are the general service ones.
   const groupable = records.map((r) => ({
     client_id: r.client_id,
     date: r.date,
@@ -164,16 +170,35 @@ function groupClientRecords(
     }),
   }))
 
-  return groupDuplicateEntries(groupable).map((g) => ({
-    date: formatDateDDMMYYYY(g.date),
-    participants: g.participants,
-    startTime: formatTime(g.start_time),
-    endTime: formatTime(g.end_time),
-    // Preserve the existing per-participant billing while guaranteeing
-    // identical duplicate slots are consolidated (counted once, not twice).
-    durationHours: g.durationHours * g.participants.length,
-    observation: g.observation,
-  }))
+  const grouped = groupDuplicateEntries(groupable)
+
+  // Build a lookup of the total real man-hours per consolidated slot key so we
+  // assign to each displayed row the actual sum of every participant's own
+  // duration (falling back to the service slot hours when a member has no
+  // individual time). For legacy duplicate records sharing the same key we keep
+  // the maximum, so the shift is not counted twice.
+  const totalsByKey = new Map<string, number>()
+  for (const r of records) {
+    const key = `${r.client_id}|${r.date}|${r.start_time}|${r.end_time}`
+    const total = r.service_participants.reduce((sum, p) => {
+      const pStart = p.start_time || r.start_time
+      const pEnd = p.end_time || r.end_time
+      return sum + toDurationHours(pStart, pEnd)
+    }, 0)
+    totalsByKey.set(key, Math.max(totalsByKey.get(key) ?? 0, total))
+  }
+
+  return grouped.map((g) => {
+    const key = `${g.client_id}|${g.date}|${g.start_time}|${g.end_time}`
+    return {
+      date: formatDateDDMMYYYY(g.date),
+      participants: g.participants,
+      startTime: formatTime(g.start_time),
+      endTime: formatTime(g.end_time),
+      durationHours: totalsByKey.get(key) ?? g.durationHours,
+      observation: g.observation,
+    }
+  })
 }
 
 function getPeriodBounds(
@@ -221,6 +246,7 @@ export function ReportGenerator() {
   const [clientExtraCostsMap, setClientExtraCostsMap] = useState<Map<string, ExtraCostRow[]>>(new Map())
   const [clientLoaded, setClientLoaded] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [hideTimes, setHideTimes] = useState(false)
 
   // Editable client report state (local, no Supabase)
   const [editableClientDataMap, setEditableClientDataMap] = useState<Map<string, ClientReportRow[]> | null>(null)
@@ -380,7 +406,7 @@ export function ReportGenerator() {
       const { data: records, error } = await supabase
         .from("service_records")
         .select(
-          "*, clients(name), service_participants(profile_id, freelancer_id)"
+          "*, clients(name), service_participants(profile_id, freelancer_id, start_time, end_time)"
         )
         .gte("date", start)
         .lte("date", end)
@@ -411,6 +437,8 @@ export function ReportGenerator() {
         service_participants: Array<{
           profile_id: string | null
           freelancer_id: string | null
+          start_time: string | null
+          end_time: string | null
         }>
       }>
 
@@ -424,26 +452,31 @@ export function ReportGenerator() {
 
       for (const wid of selectedWorkerIds) {
         const [type, id] = wid.split(":")
-        const matchingRecords = allRecords.filter((r) =>
-          r.service_participants.some((p) =>
+
+        // Use the participant's own start/end hours when available, falling
+        // back to the service record's general hours otherwise. This ensures
+        // each worker's monthly total reflects only their individual shift.
+        const matchingRecords: GroupableRecord[] = []
+        for (const r of allRecords) {
+          const participant = r.service_participants.find((p) =>
             type === "emp"
               ? p.profile_id === id
               : p.freelancer_id === id
           )
-        )
+          if (!participant) continue
+          matchingRecords.push({
+            client_id: r.client_id,
+            date: r.date,
+            start_time: participant.start_time ?? r.start_time,
+            end_time: participant.end_time ?? r.end_time,
+            observation: r.observation,
+          })
+        }
 
         // Deduplicate legacy duplicate shifts for this single employee:
         // entries matching date + client + start_time + end_time are merged
         // (notes joined with " | ") and the slot duration is counted once.
-        const rows = groupDuplicateEntries(
-          matchingRecords.map((r) => ({
-            client_id: r.client_id,
-            date: r.date,
-            start_time: r.start_time,
-            end_time: r.end_time,
-            observation: r.observation,
-          }))
-        ).map((g) => ({
+        const rows = groupDuplicateEntries(matchingRecords).map((g) => ({
           date: formatDateDDMMYYYY(g.date),
           clientName: clientNames.get(g.client_id) ?? "-",
           startTime: formatTime(g.start_time),
@@ -506,7 +539,7 @@ export function ReportGenerator() {
         supabase
           .from("service_records")
           .select(
-            "client_id, date, start_time, end_time, observation, clients(name), service_participants(profile_id, freelancer_id, profiles(full_name), freelancers(name))"
+            "client_id, date, start_time, end_time, observation, clients(name), service_participants(profile_id, freelancer_id, start_time, end_time, profiles(full_name), freelancers(name))"
           )
           .in("client_id", Array.from(selectedClientIds))
           .gte("date", start)
@@ -543,6 +576,8 @@ export function ReportGenerator() {
         observation: string | null
         clients: { name: string } | null
         service_participants: Array<{
+          start_time: string | null
+          end_time: string | null
           profiles: { full_name: string | null } | null
           freelancers: { name: string } | null
         }>
@@ -1076,6 +1111,22 @@ export function ReportGenerator() {
                   </div>
                 )}
 
+                <div className="flex items-center gap-2 mt-2 md:pt-6 md:mt-0">
+                  <input
+                    type="checkbox"
+                    id="hide-times"
+                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                    checked={hideTimes}
+                    onChange={(e) => setHideTimes(e.target.checked)}
+                  />
+                  <Label
+                    className="text-sm cursor-pointer"
+                    htmlFor="hide-times"
+                  >
+                    Nascondi orari (mostra solo ore totali)
+                  </Label>
+                </div>
+
                 {clientPeriodType === "giornaliero" && (
                   <div className="space-y-2">
                     <Label htmlFor="client-date" className="text-sm font-medium">Data</Label>
@@ -1237,7 +1288,9 @@ export function ReportGenerator() {
                                 <TableRow className="bg-muted/50 hover:bg-muted/50">
                                   <TableHead className="font-semibold text-xs">Data</TableHead>
                                   <TableHead className="font-semibold text-xs">Partecipanti</TableHead>
-                                  <TableHead className="font-semibold text-xs">Orario / Durata</TableHead>
+                                  <TableHead className="font-semibold text-xs">
+                                    {hideTimes ? "Durata (ore)" : "Orario / Durata"}
+                                  </TableHead>
                                   <TableHead className="font-semibold text-xs">Note</TableHead>
                                   {isAdmin && <TableHead className="w-[50px] text-right font-semibold text-xs">Azioni</TableHead>}
                                 </TableRow>
@@ -1256,8 +1309,18 @@ export function ReportGenerator() {
                                       </div>
                                     </TableCell>
                                     <TableCell className="text-xs whitespace-nowrap">
-                                      {row.startTime} - {row.endTime} (
-                                      <span className="font-medium">{row.durationHours.toFixed(2)} ore</span>)
+                                      {hideTimes ? (
+                                        <span className="font-medium">
+                                          {row.durationHours.toFixed(2)} ore
+                                        </span>
+                                      ) : (
+                                        <>
+                                          {row.startTime} - {row.endTime} (
+                                          <span className="font-medium">
+                                            {row.durationHours.toFixed(2)} ore
+                                          </span>)
+                                        </>
+                                      )}
                                     </TableCell>
                                     <TableCell className="text-xs max-w-[150px] truncate">
                                       {row.observation || <span className="text-muted-foreground">—</span>}
@@ -1355,6 +1418,7 @@ export function ReportGenerator() {
                         <ClientReportPDF
                           clientsData={clientsData}
                           periodLabel={clientPeriodLabel}
+                          hideTimes={hideTimes}
                         />
                       }
                       fileName={`report-${clientPeriodType}-clienti-cumulativo-${clientPeriodLabel.replace(/\s+/g, "-").toLowerCase()}.pdf`}

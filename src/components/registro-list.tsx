@@ -81,6 +81,8 @@ type ServiceRecord =
       worker_type: "employee" | "freelancer"
       profile_id: string | null
       freelancer_id: string | null
+      start_time: string | null
+      end_time: string | null
       profiles: { full_name: string | null } | null
       freelancers: { name: string } | null
     }>
@@ -135,6 +137,28 @@ function participantName(p: Participant): string {
   return p.freelancers?.name ?? "Collaboratore"
 }
 
+// Returns an object with the participant's individual hours (with fallback to
+// the service record's general hours) only when those hours differ from the
+// general service slot, otherwise null. Used to highlight custom per-member times.
+function participantIndividualTime(
+  p: Participant,
+  generalStart: string,
+  generalEnd: string
+): { start: string; end: string } | null {
+  const hasOwnStart = Boolean(p.start_time)
+  const hasOwnEnd = Boolean(p.end_time)
+  if (!hasOwnStart && !hasOwnEnd) return null
+  const start = hasOwnStart ? p.start_time!.slice(0, 5) : generalStart.slice(0, 5)
+  const end = hasOwnEnd ? p.end_time!.slice(0, 5) : generalEnd.slice(0, 5)
+  if (
+    start === generalStart.slice(0, 5) &&
+    end === generalEnd.slice(0, 5)
+  ) {
+    return null
+  }
+  return { start, end }
+}
+
 export function RegistroList() {
   const supabase = useMemo(() => createClient(), [])
 
@@ -168,6 +192,17 @@ export function RegistroList() {
     start_time: "",
     end_time: "",
     observation: "",
+  })
+
+  // Editing a single participant's individual hours (service_participants).
+  const [editParticipantTarget, setEditParticipantTarget] = useState<{
+    participant: Participant
+    record: ServiceRecord
+  } | null>(null)
+  const [isSavingParticipant, setIsSavingParticipant] = useState(false)
+  const [editParticipantForm, setEditParticipantForm] = useState({
+    start_time: "",
+    end_time: "",
   })
 
   // Load current user and role
@@ -480,6 +515,59 @@ export function RegistroList() {
     setIsSaving(false)
   }
 
+  function openEditParticipantDialog(participant: Participant, record: ServiceRecord) {
+    setEditParticipantTarget({ participant, record })
+    setEditParticipantForm({
+      start_time: (participant.start_time ?? record.start_time).slice(0, 5),
+      end_time: (participant.end_time ?? record.end_time).slice(0, 5),
+    })
+  }
+
+  async function handleSaveParticipantEdit() {
+    if (!editParticipantTarget) return
+
+    const { participant } = editParticipantTarget
+    setIsSavingParticipant(true)
+    const { error } = await supabase
+      .from("service_participants")
+      .update({
+        start_time: editParticipantForm.start_time || null,
+        end_time: editParticipantForm.end_time || null,
+      })
+      .eq("id", participant.id)
+
+    if (error) {
+      toast.add({
+        title: "Errore",
+        description: "Impossibile aggiornare l'orario del partecipante",
+        type: "error",
+      })
+    } else {
+      toast.add({
+        title: "Orario partecipante aggiornato con successo",
+        type: "success",
+      })
+      // Update local state for the specific participant only
+      const participantId = participant.id
+      setRecords((prev) =>
+        prev.map((r) => ({
+          ...r,
+          service_participants: r.service_participants.map((p) =>
+            p.id === participantId
+              ? {
+                  ...p,
+                  start_time: editParticipantForm.start_time || null,
+                  end_time: editParticipantForm.end_time || null,
+                }
+              : p
+          ),
+        }))
+      )
+      setEditParticipantTarget(null)
+    }
+    setIsSavingParticipant(false)
+  }
+
   async function handleDelete() {
     if (!deleteTarget) return
 
@@ -721,16 +809,43 @@ export function RegistroList() {
                       </div>
 
                       {group.participants.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5">
-                          {group.participants.map((p) => (
-                            <Badge
-                              key={p.id}
-                              variant={p.worker_type === "employee" ? "team" : "freelancer"}
-                              className="rounded-lg text-xs font-normal"
-                            >
-                              {participantName(p)}
-                            </Badge>
-                          ))}
+                        <div className="space-y-1.5">
+                          {group.participants.map((p) => {
+                            const individual = participantIndividualTime(
+                              p,
+                              group.start_time,
+                              group.end_time
+                            )
+                            const editable = group.records.some((r) => canManage(r))
+                            return (
+                              <div key={p.id} className="flex flex-wrap items-center gap-1.5">
+                                <Badge
+                                  variant={p.worker_type === "employee" ? "team" : "freelancer"}
+                                  className="rounded-lg text-xs font-normal"
+                                >
+                                  {participantName(p)}
+                                </Badge>
+                                {individual && (
+                                  <span className="text-xs font-medium text-primary">
+                                    {individual.start} - {individual.end}
+                                  </span>
+                                )}
+                                {editable && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="rounded-lg h-7 min-h-[32px] min-w-[32px]"
+                                    onClick={() =>
+                                      openEditParticipantDialog(p, group.records[0])
+                                    }
+                                    aria-label={`Modifica orario ${participantName(p)}`}
+                                  >
+                                    <Pencil className="h-3.5 w-3.5" />
+                                  </Button>
+                                )}
+                              </div>
+                            )
+                          })}
                         </div>
                       )}
 
@@ -777,15 +892,42 @@ export function RegistroList() {
                           <TableCell>
                             <div className="flex flex-wrap gap-1.5">
                               {group.participants.length > 0 ? (
-                                group.participants.map((p) => (
-                                  <Badge
-                                    key={p.id}
-                                    variant={p.worker_type === "employee" ? "team" : "freelancer"}
-                                    className="rounded-lg text-xs font-normal"
-                                  >
-                                    {participantName(p)}
-                                  </Badge>
-                                ))
+                                group.participants.map((p) => {
+                                  const individual = participantIndividualTime(
+                                    p,
+                                    group.start_time,
+                                    group.end_time
+                                  )
+                                  const editable = group.records.some((r) => canManage(r))
+                                  return (
+                                    <div key={p.id} className="flex flex-wrap items-center gap-1.5">
+                                      <Badge
+                                        variant={p.worker_type === "employee" ? "team" : "freelancer"}
+                                        className="rounded-lg text-xs font-normal"
+                                      >
+                                        {participantName(p)}
+                                      </Badge>
+                                      {individual && (
+                                        <span className="text-[11px] font-medium text-primary">
+                                          {individual.start} - {individual.end}
+                                        </span>
+                                      )}
+                                      {editable && (
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="rounded-lg h-7 min-h-[32px] min-w-[32px]"
+                                          onClick={() =>
+                                            openEditParticipantDialog(p, group.records[0])
+                                          }
+                                          aria-label={`Modifica orario ${participantName(p)}`}
+                                        >
+                                          <Pencil className="h-3.5 w-3.5" />
+                                        </Button>
+                                      )}
+                                    </div>
+                                  )
+                                })
                               ) : (
                                 <span className="text-xs text-muted-foreground">
                                   Nessun partecipante
@@ -1038,6 +1180,72 @@ export function RegistroList() {
               className="rounded-lg w-full sm:w-auto min-h-[44px]"
             >
               {isSaving ? "Salvataggio..." : "Salva Modifiche"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+{/* Dialog di modifica orario singolo partecipante */}
+      <Dialog
+        open={editParticipantTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setEditParticipantTarget(null)
+        }}
+      >
+        <DialogContent className="w-[95vw] max-w-lg sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Modifica orario partecipante</DialogTitle>
+            <DialogDescription>
+              {`Aggiorna l'orario di lavoro di ${editParticipantTarget ? participantName(editParticipantTarget.participant) : ""} (solo per questo collaboratore)`}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-participant-start-time" className="text-sm font-medium">Ora inizio</Label>
+                <Input
+                  id="edit-participant-start-time"
+                  type="time"
+                  value={editParticipantForm.start_time}
+                  onChange={(e) =>
+                    setEditParticipantForm((prev) => ({
+                      ...prev,
+                      start_time: e.target.value,
+                    }))
+                  }
+                  className="rounded-lg h-12 text-base"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-participant-end-time" className="text-sm font-medium">Ora fine</Label>
+                <Input
+                  id="edit-participant-end-time"
+                  type="time"
+                  value={editParticipantForm.end_time}
+                  onChange={(e) =>
+                    setEditParticipantForm((prev) => ({
+                      ...prev,
+                      end_time: e.target.value,
+                    }))
+                  }
+                  className="rounded-lg h-12 text-base"
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="flex-col-reverse sm:flex-row sm:justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setEditParticipantTarget(null)}
+              className="rounded-lg w-full sm:w-auto min-h-[44px]"
+            >
+              Annulla
+            </Button>
+            <Button
+              onClick={handleSaveParticipantEdit}
+              disabled={isSavingParticipant || !editParticipantForm.start_time || !editParticipantForm.end_time}
+              className="rounded-lg w-full sm:w-auto min-h-[44px]"
+            >
+              {isSavingParticipant ? "Salvataggio..." : "Salva"}
             </Button>
           </DialogFooter>
         </DialogContent>

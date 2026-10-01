@@ -31,6 +31,7 @@ export type ClientReportData = {
 type ClientReportPDFProps = {
   clientsData: ClientReportData[]
   periodLabel: string
+  hideTimes?: boolean
 }
 
 const styles = StyleSheet.create({
@@ -139,7 +140,13 @@ function formatEuro(value: number): string {
   }).format(value)
 }
 
-function ClientPage({ data }: { data: ClientReportData }) {
+function ClientPage({
+  data,
+  hideTimes,
+}: {
+  data: ClientReportData
+  hideTimes: boolean
+}) {
   const totalHours = data.rows.reduce(
     (sum, row) => sum + row.durationHours,
     0
@@ -168,7 +175,9 @@ function ClientPage({ data }: { data: ClientReportData }) {
               <View style={styles.tableHeader}>
                 <Text style={styles.colDate}>Data</Text>
                 <Text style={styles.colParticipants}>Partecipanti</Text>
-                <Text style={styles.colTime}>Orario / Durata</Text>
+                <Text style={styles.colTime}>
+                  {hideTimes ? "Durata (ore)" : "Orario / Durata"}
+                </Text>
                 <Text style={styles.colNote}>Note / Ubicazione</Text>
               </View>
 
@@ -179,7 +188,9 @@ function ClientPage({ data }: { data: ClientReportData }) {
                     {row.participants.join(", ")}
                   </Text>
                   <Text style={styles.colTime}>
-                    {row.startTime} - {row.endTime} ({row.durationHours.toFixed(2)} ore)
+                    {hideTimes
+                      ? row.durationHours.toFixed(2)
+                      : `${row.startTime} - ${row.endTime} (${row.durationHours.toFixed(2)} ore)`}
                   </Text>
                   <Text style={styles.colNote}>{row.observation || "-"}</Text>
                 </View>
@@ -226,11 +237,12 @@ function ClientPage({ data }: { data: ClientReportData }) {
 export function ClientReportPDF({
   clientsData,
   periodLabel,
+  hideTimes = false,
 }: ClientReportPDFProps) {
   return (
     <Document>
       {clientsData.map((data, index) => (
-        <ClientPage key={index} data={data} />
+        <ClientPage key={index} data={data} hideTimes={hideTimes} />
       ))}
     </Document>
   )
