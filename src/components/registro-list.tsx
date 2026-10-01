@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useEffect, useMemo, useState } from "react"
 import { CalendarDays, Clock, Eraser, Pencil, Search, Trash2, User } from "lucide-react"
@@ -821,7 +821,7 @@ export function RegistroList() {
                               <div key={p.id} className="flex flex-wrap items-center gap-1.5">
                                 <Badge
                                   variant={p.worker_type === "employee" ? "team" : "freelancer"}
-                                  className="rounded-lg text-xs font-normal"
+                                  className="rounded-lg text-xs md:text-sm font-normal"
                                 >
                                   {participantName(p)}
                                 </Badge>
@@ -865,27 +865,27 @@ export function RegistroList() {
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-muted/50 hover:bg-muted/50">
-                        <TableHead className="font-semibold">Data</TableHead>
-                        <TableHead className="font-semibold">Cliente</TableHead>
-                        <TableHead className="font-semibold">Orario</TableHead>
-                        <TableHead className="font-semibold">Partecipanti</TableHead>
-                        <TableHead className="font-semibold">Note</TableHead>
-                        <TableHead className="w-[100px] text-right font-semibold">Azioni</TableHead>
+                        <TableHead className="font-semibold text-sm md:text-base">Data</TableHead>
+                        <TableHead className="font-semibold text-sm md:text-base">Cliente</TableHead>
+                        <TableHead className="font-semibold text-sm md:text-base">Orario</TableHead>
+                        <TableHead className="font-semibold text-sm md:text-base">Partecipanti</TableHead>
+                        <TableHead className="font-semibold text-sm md:text-base">Note</TableHead>
+                        <TableHead className="w-[100px] text-right font-semibold text-sm md:text-base">Azioni</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {groupedRecords.map((group, index) => (
                         <TableRow key={group.key} className={index % 2 === 1 ? "bg-muted/20" : ""}>
-                          <TableCell className="whitespace-nowrap">
+                          <TableCell className="text-sm md:text-base whitespace-nowrap">
                             {formatDate(group.date)}
                           </TableCell>
-                          <TableCell className="font-medium">
+                          <TableCell className="text-sm md:text-base font-medium">
                             {group.clients?.name}
                           </TableCell>
-                          <TableCell className="whitespace-nowrap">
+                          <TableCell className="text-sm md:text-base whitespace-nowrap">
                             {formatTime(group.start_time)} -{" "}
                             {formatTime(group.end_time)}
-                            <span className="block text-xs text-muted-foreground">
+                            <span className="block text-xs md:text-sm text-muted-foreground">
                               {calculateDuration(group.start_time, group.end_time)}
                             </span>
                           </TableCell>
@@ -903,12 +903,12 @@ export function RegistroList() {
                                     <div key={p.id} className="flex flex-wrap items-center gap-1.5">
                                       <Badge
                                         variant={p.worker_type === "employee" ? "team" : "freelancer"}
-                                        className="rounded-lg text-xs font-normal"
+                                        className="rounded-lg text-xs md:text-sm font-normal"
                                       >
                                         {participantName(p)}
                                       </Badge>
                                       {individual && (
-                                        <span className="text-[11px] font-medium text-primary">
+                                        <span className="text-xs md:text-sm font-medium text-primary">
                                           {individual.start} - {individual.end}
                                         </span>
                                       )}
@@ -929,22 +929,22 @@ export function RegistroList() {
                                   )
                                 })
                               ) : (
-                                <span className="text-xs text-muted-foreground">
+                                <span className="text-xs md:text-sm text-muted-foreground">
                                   Nessun partecipante
                                 </span>
                               )}
                             </div>
                           </TableCell>
-                          <TableCell className="max-w-[200px] truncate">
+                          <TableCell className="text-sm md:text-base max-w-[200px] truncate">
                             {group.observation || (
-                              <span className="text-xs text-muted-foreground">
+                              <span className="text-xs md:text-sm text-muted-foreground">
                                 —
                               </span>
                             )}
                           </TableCell>
                           <TableCell className="text-right">
                             {group.records.length > 1 ? (
-                              <Badge variant="outline" className="rounded-lg text-[11px] font-normal">
+                              <Badge variant="outline" className="rounded-lg text-xs md:text-sm font-normal">
                                 {group.records.length} uniti
                               </Badge>
                             ) : isSingleRecord(group) && canManage(group.records[0]) ? (
