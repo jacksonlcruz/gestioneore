@@ -550,11 +550,15 @@ export function InsertionForm() {
         service_record_id: record.id,
         worker_type: "employee" as const,
         profile_id: profileId,
+        start_time: values.startTime || null,
+        end_time: values.endTime || null,
       })),
       ...selectedFreelancerIds.map((freelancerId) => ({
         service_record_id: record.id,
         worker_type: "freelancer" as const,
         freelancer_id: freelancerId,
+        start_time: values.startTime || null,
+        end_time: values.endTime || null,
       })),
     ]
 
