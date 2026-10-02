@@ -1238,7 +1238,7 @@ export function GestioneManager() {
           <DialogHeader>
             <DialogTitle>Promuovi a Dipendente</DialogTitle>
             <DialogDescription>
-              Crea un account per il collaboratore "{convertFreelancerDialog.fullName}". Lo storico delle ore verrà migrato automaticamente.
+              Crea un account per il collaboratore &quot;{convertFreelancerDialog.fullName}&quot;. Lo storico delle ore verrà migrato automaticamente.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -1308,7 +1308,7 @@ export function GestioneManager() {
           <AlertDialogHeader>
             <AlertDialogTitle>Converti in Collaboratore Esterno</AlertDialogTitle>
             <AlertDialogDescription>
-              Sei sicuro di voler convertire "{convertUserTarget.profile?.full_name || "questo utente"}" in Collaboratore Esterno? L'accesso dell'utente verrà revocato e le ore registrate verranno migrate al nuovo profilo collaboratore.
+              Sei sicuro di voler convertire &quot;{convertUserTarget.profile?.full_name || "questo utente"}&quot; in Collaboratore Esterno? L&apos;accesso dell&apos;utente verrà revocato e le ore registrate verranno migrate al nuovo profilo collaboratore.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col-reverse sm:flex-row sm:justify-end gap-2">

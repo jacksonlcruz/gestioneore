@@ -1,7 +1,16 @@
 import { createClient } from "@supabase/supabase-js"
+import { createClient as createServerClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
 
 export async function POST(request: Request) {
+  // --- AUTH CHECK ---
+  const supabaseServer = await createServerClient()
+  const { data: { user } } = await supabaseServer.auth.getUser()
+  if (!user) return NextResponse.json({ message: "Non autorizzato" }, { status: 401 })
+  const { data: userProfile } = await supabaseServer.from("profiles").select("role").eq("id", user.id).single()
+  if (userProfile?.role !== "admin") return NextResponse.json({ message: "Non autorizzato" }, { status: 403 })
+  // ------------------
+
   const { email, password, fullName, username, role } = await request.json()
 
   if (!email || !password || !fullName || !role) {
