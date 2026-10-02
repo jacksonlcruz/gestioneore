@@ -155,7 +155,7 @@ export default function CalcoloRapidoPage() {
         <CardContent className="space-y-4">
           {isInvalidInterval ? (
             <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
-              Intervallo non valido: l'ora di inizio e l'ora di fine coincidono.
+              Intervallo non valido: l&apos;ora di inizio e l&apos;ora di fine coincidono.
               Imposta un intervallo di durata maggiore di zero.
             </div>
           ) : (
