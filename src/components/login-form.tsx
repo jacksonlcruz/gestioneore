@@ -59,10 +59,10 @@ export function LoginForm() {
 
   return (
     <div className="flex min-h-[80vh] items-center justify-center">
-      <Card className="w-full max-w-sm">
+      <Card className="w-full max-w-sm rounded-3xl border-border/60 bg-card/80 shadow-none">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex items-center justify-center">
-            <Clock className="h-10 w-10 text-primary" />
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/15 ring-1 ring-primary/30">
+            <Clock className="h-8 w-8 text-primary" />
           </div>
           <CardTitle className="text-xl">Accedi a Gestione Ore</CardTitle>
           <CardDescription>
@@ -74,7 +74,7 @@ export function LoginForm() {
             <div className="space-y-2">
               <Label htmlFor="identifier">Email o Nome Utente</Label>
               <Input
-                id="identifier"
+                id="identifier" className="h-12 rounded-xl text-base"
                 type="text"
                 placeholder="mario.rossi@email.com"
                 value={identifier}
@@ -86,7 +86,7 @@ export function LoginForm() {
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <Input
-                id="password"
+                id="password" className="h-12 rounded-xl text-base"
                 type="password"
                 placeholder="••••••••"
                 value={password}
@@ -96,7 +96,7 @@ export function LoginForm() {
             </div>
             <Button
               type="submit"
-              className="w-full"
+              className="w-full h-12 rounded-xl text-base font-semibold"
               size="lg"
               disabled={isLoading}
             >
