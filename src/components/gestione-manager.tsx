@@ -914,7 +914,7 @@ export function GestioneManager() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Nome</TableHead>
-                    <TableHead>Tariffa Oraria</TableHead>
+                    <TableHead><span className="sm:hidden">Tariffa</span><span className="hidden sm:inline">Tariffa Oraria</span></TableHead>
                     <TableHead>Stato</TableHead>
                     <TableHead className="w-[120px] text-right">Azioni</TableHead>
                   </TableRow>
@@ -943,7 +943,7 @@ export function GestioneManager() {
                             {client.active === false && (
                               <Badge variant="secondary" className="gap-1">
                                 <UserX className="h-3 w-3" />
-                                Disattivato
+                                <span className="hidden sm:inline">Disattivato</span>
                               </Badge>
                             )}
                           </TableCell>
