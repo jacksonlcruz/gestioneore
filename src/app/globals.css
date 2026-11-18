@@ -83,38 +83,40 @@
   --sidebar-ring: oklch(0.65 0.12 265);
 }
 
+/* Tema escuro (padrão do app). Cores da prévia aprovada: fundo azul-petróleo, ciano e violeta. */
 .dark {
-  --background: oklch(0.12 0.02 240);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.18 0.02 240);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.18 0.02 240);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.65 0.18 265);
-  --primary-foreground: oklch(0.12 0.02 240);
-  --secondary: oklch(0.25 0.02 240);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.25 0.02 240);
-  --muted-foreground: oklch(0.708 0.02 240);
-  --accent: oklch(0.25 0.02 240);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0.12 265);
-  --chart-1: oklch(0.65 0.18 265);
-  --chart-2: oklch(0.55 0.15 200);
-  --chart-3: oklch(0.65 0.18 160);
-  --chart-4: oklch(0.75 0.18 85);
-  --chart-5: oklch(0.65 0.2 30);
-  --sidebar: oklch(0.18 0.02 240);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.65 0.18 265);
-  --sidebar-primary-foreground: oklch(0.12 0.02 240);
-  --sidebar-accent: oklch(0.25 0.02 240);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0.12 265);
+  color-scheme: dark;
+  --background: #0a0f1e;
+  --foreground: #e6edf7;
+  --card: #111a2e;
+  --card-foreground: #e6edf7;
+  --popover: #131d33;
+  --popover-foreground: #e6edf7;
+  --primary: #22d3ee;
+  --primary-foreground: #0a0f1e;
+  --secondary: #1a2540;
+  --secondary-foreground: #e6edf7;
+  --muted: #1a2540;
+  --muted-foreground: #8b98b0;
+  --accent: #1f2b4a;
+  --accent-foreground: #e6edf7;
+  --destructive: #f87171;
+  --border: rgb(255 255 255 / 10%);
+  --input: rgb(255 255 255 / 14%);
+  --ring: #22d3ee;
+  --chart-1: #22d3ee;
+  --chart-2: #a78bfa;
+  --chart-3: #34d399;
+  --chart-4: #fbbf24;
+  --chart-5: #f472b6;
+  --sidebar: #111a2e;
+  --sidebar-foreground: #e6edf7;
+  --sidebar-primary: #22d3ee;
+  --sidebar-primary-foreground: #0a0f1e;
+  --sidebar-accent: #1f2b4a;
+  --sidebar-accent-foreground: #e6edf7;
+  --sidebar-border: rgb(255 255 255 / 10%);
+  --sidebar-ring: #22d3ee;
 }
 
 @layer base {

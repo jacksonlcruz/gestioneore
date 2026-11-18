@@ -20,6 +20,14 @@ const navLinks = [
   { href: "/profilo", label: "Profilo", icon: User },
 ]
 
+// Itens fixos na barra inferior do celular (os demais ficam no menu)
+const tabLinks = [
+  { href: "/", label: "Inserisci", icon: LayoutDashboard },
+  { href: "/registro", label: "Registro", icon: FileText },
+  { href: "/report", label: "Report", icon: Clock },
+  { href: "/profilo", label: "Profilo", icon: User },
+]
+
 const publicRoute = "/login"
 
 export function Navbar() {
@@ -93,6 +101,7 @@ export function Navbar() {
   if (pathname === publicRoute) return null
 
   return (
+    <>
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60 shadow-sm">
       <div className="container flex h-16 items-center justify-between px-4 md:px-6">
         {/* Logo / Titolo */}
@@ -129,8 +138,8 @@ export function Navbar() {
               {userRole && (
                 <span className={`inline-flex h-4 items-center rounded-full px-1.5 text-[10px] font-semibold uppercase tracking-wide ${
                   userRole === "admin"
-                    ? "bg-purple-100 text-purple-800"
-                    : "bg-slate-100 text-slate-700"
+                    ? "bg-violet-500/20 text-violet-200"
+                    : "bg-slate-500/20 text-slate-200"
                 }`}>
                   {userRole === "admin" ? "Admin" : "Dip."}
                 </span>
@@ -150,8 +159,8 @@ export function Navbar() {
               {userRole && (
                 <span className={`inline-flex h-4 shrink-0 items-center rounded-full px-1.5 text-[9px] font-semibold uppercase tracking-wide ${
                   userRole === "admin"
-                    ? "bg-purple-100 text-purple-800"
-                    : "bg-slate-100 text-slate-700"
+                    ? "bg-violet-500/20 text-violet-200"
+                    : "bg-slate-500/20 text-slate-200"
                 }`}>
                   {userRole === "admin" ? "A" : "D"}
                 </span>
@@ -206,8 +215,8 @@ export function Navbar() {
               {userRole && (
                 <span className={`inline-flex h-5 shrink-0 items-center rounded-full px-2 text-[10px] font-semibold uppercase tracking-wide ${
                   userRole === "admin"
-                    ? "bg-purple-100 text-purple-800"
-                    : "bg-slate-100 text-slate-700"
+                    ? "bg-violet-500/20 text-violet-200"
+                    : "bg-slate-500/20 text-slate-200"
                 }`}>
                   {userRole === "admin" ? "Admin" : "Dip."}
                 </span>
@@ -225,5 +234,35 @@ export function Navbar() {
         </nav>
       )}
     </header>
+
+    {/* Barra inferior (celular): acesso rápido às telas do dia a dia */}
+    <nav
+      aria-label="Navigazione principale"
+      className="fixed inset-x-0 bottom-0 z-50 px-4 pt-2 pb-[max(env(safe-area-inset-bottom),12px)] md:hidden"
+    >
+      <div className="mx-auto flex max-w-md items-stretch gap-1 rounded-3xl border border-border bg-card/90 p-1.5 shadow-lg backdrop-blur-xl">
+        {tabLinks.map((link) => {
+          const Icon = link.icon
+          const isActive = pathname === link.href
+          return (
+            <Link
+              key={link.href}
+              href={link.href}
+              aria-current={isActive ? "page" : undefined}
+              className={cn(
+                "flex min-h-[56px] flex-1 flex-col items-center justify-center gap-1 rounded-2xl text-[11px] font-medium transition-colors",
+                isActive
+                  ? "bg-primary/15 text-primary"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <Icon className="h-5 w-5" />
+              {link.label}
+            </Link>
+          )
+        })}
+      </div>
+    </nav>
+    </>
   )
 }
