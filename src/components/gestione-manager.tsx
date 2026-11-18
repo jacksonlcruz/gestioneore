@@ -768,16 +768,16 @@ export function GestioneManager() {
       </Card>
 
       <Tabs defaultValue="employees">
-        <TabsList className="w-full md:w-auto rounded-xl p-1 bg-muted/50">
-          <TabsTrigger value="employees" className="flex-1 md:flex-none">
+        <TabsList className="grid w-full grid-cols-3 gap-1 !h-auto rounded-xl p-1 bg-muted/50 md:inline-flex md:w-auto">
+          <TabsTrigger value="employees" className="!h-auto min-h-11 min-w-0 flex-col gap-1 whitespace-normal px-1 py-2 text-center text-xs leading-tight md:flex-row md:gap-2 md:px-3 md:text-sm md:flex-none">
             <Users className="h-4 w-4" />
             Gestione Utenti
           </TabsTrigger>
-          <TabsTrigger value="clients" className="flex-1 md:flex-none">
+          <TabsTrigger value="clients" className="!h-auto min-h-11 min-w-0 flex-col gap-1 whitespace-normal px-1 py-2 text-center text-xs leading-tight md:flex-row md:gap-2 md:px-3 md:text-sm md:flex-none">
             <Building2 className="h-4 w-4" />
             Gestione Clienti
           </TabsTrigger>
-          <TabsTrigger value="freelancers" className="flex-1 md:flex-none">
+          <TabsTrigger value="freelancers" className="!h-auto min-h-11 min-w-0 flex-col gap-1 whitespace-normal px-1 py-2 text-center text-xs leading-tight md:flex-row md:gap-2 md:px-3 md:text-sm md:flex-none">
             <UserPlus className="h-4 w-4" />
             Collaboratori Esterni
           </TabsTrigger>
@@ -833,9 +833,9 @@ export function GestioneManager() {
                         <TableCell>
                           <Badge variant={(profile.is_active ?? true) ? "success" : "error"} className="gap-1">
                             {(profile.is_active ?? true) ? (
-                              <><UserCheck className="h-3 w-3" /> Attivo</>
+                              <><UserCheck className="h-3 w-3" /><span className="hidden sm:inline">Attivo</span></>
                             ) : (
-                              <><UserX className="h-3 w-3" /> Inattivo</>
+                              <><UserX className="h-3 w-3" /><span className="hidden sm:inline">Inattivo</span></>
                             )}
                           </Badge>
                         </TableCell>
