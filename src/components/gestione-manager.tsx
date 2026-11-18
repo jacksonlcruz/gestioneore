@@ -803,7 +803,7 @@ export function GestioneManager() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Nome</TableHead>
-                    <TableHead>Email</TableHead>
+                    <TableHead className="hidden md:table-cell">Email</TableHead>
                     <TableHead>Ruolo</TableHead>
                     <TableHead>Stato</TableHead>
                     <TableHead className="w-[140px] text-right">Azioni</TableHead>
@@ -822,7 +822,7 @@ export function GestioneManager() {
                         <TableCell className="font-medium">
                           {profile.full_name || "Senza nome"}
                         </TableCell>
-                        <TableCell className="text-muted-foreground">
+                        <TableCell className="hidden md:table-cell text-muted-foreground">
                           {profile.email || "-"}
                         </TableCell>
                         <TableCell>
