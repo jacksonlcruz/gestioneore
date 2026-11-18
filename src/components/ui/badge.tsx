@@ -25,13 +25,13 @@ const badgeVariants = cva(
         error:
           "bg-rose-100 text-rose-800 border-rose-200 [a]:hover:bg-rose-200",
         admin:
-          "bg-purple-100 text-purple-800 border-purple-200 [a]:hover:bg-purple-200",
+          "bg-violet-500/20 text-violet-200 border-violet-400/30 [a]:hover:bg-violet-500/30",
         employee:
-          "bg-slate-100 text-slate-700 border-slate-200 [a]:hover:bg-slate-200",
+          "bg-slate-500/20 text-slate-200 border-slate-400/30 [a]:hover:bg-slate-500/30",
         team:
-          "bg-blue-50 text-blue-700 border-blue-200 [a]:hover:bg-blue-100",
+          "bg-blue-500/20 text-blue-200 border-blue-400/30 [a]:hover:bg-blue-500/30",
         freelancer:
-          "bg-amber-50 text-amber-800 border-amber-200 [a]:hover:bg-amber-100",
+          "bg-amber-500/20 text-amber-200 border-amber-400/30 [a]:hover:bg-amber-500/30",
       },
     },
     defaultVariants: {
