@@ -29,6 +29,15 @@ const tabLinks = [
   { href: "/profilo", label: "Profilo", icon: User },
 ]
 
+// Iniciais para o avatar do celular (ex.: "Jackson Linhares" -> "JL")
+function initialsOf(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return "?"
+  const first = parts[0][0] ?? ""
+  const last = parts.length > 1 ? parts[parts.length - 1][0] ?? "" : ""
+  return (first + last).toUpperCase()
+}
+
 const publicRoute = "/login"
 
 export function Navbar() {
@@ -155,17 +164,17 @@ export function Navbar() {
         {/* Pulsante menu mobile */}
         <div className="flex items-center gap-1.5 md:hidden">
           {userName && (
-            <span className="flex items-center gap-1 px-2 py-1.5 text-xs text-muted-foreground rounded-md bg-muted/50 max-w-[120px]">
-              <span className="truncate">{userName}</span>
-              {userRole && (
-                <span className={`inline-flex h-4 shrink-0 items-center rounded-full px-1.5 text-[9px] font-semibold uppercase tracking-wide ${
-                  userRole === "admin"
-                    ? "bg-violet-500/20 text-violet-200"
-                    : "bg-slate-500/20 text-slate-200"
-                }`}>
-                  {userRole === "admin" ? "A" : "D"}
-                </span>
+            <span
+              aria-label={`${userName}${userRole ? `, ${userRole === "admin" ? "amministratore" : "dipendente"}` : ""}`}
+              title={userName}
+              className={cn(
+                "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold",
+                userRole === "admin"
+                  ? "bg-violet-500/20 text-violet-200 ring-2 ring-violet-400/60"
+                  : "bg-primary/15 text-primary ring-1 ring-border"
               )}
+            >
+              {initialsOf(userName)}
             </span>
           )}
           <button
