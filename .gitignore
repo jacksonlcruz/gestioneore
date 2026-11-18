@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Configuração local do MCP (pode conter identificadores de projeto)
+.mcp.json
