@@ -242,7 +242,22 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      admin_list_profiles: {
+        Args: Record<PropertyKey, never>
+        Returns: Database["public"]["Tables"]["profiles"]["Row"][]
+      }
+      merge_service_record_slot: {
+        Args: {
+          p_client_id: string
+          p_date: string
+          p_start: string
+          p_end: string
+          p_observation: string
+          p_profile_ids: string[]
+          p_freelancer_ids: string[]
+        }
+        Returns: string | null
+      }
     }
     Enums: {
       [_ in never]: never

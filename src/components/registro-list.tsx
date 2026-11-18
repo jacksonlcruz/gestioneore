@@ -62,7 +62,7 @@ import { toast } from "@/components/ui/toast"
 import { mergeObservations } from "@/lib/registri-utils"
 
 type Client = Database["public"]["Tables"]["clients"]["Row"]
-type Profile = Database["public"]["Tables"]["profiles"]["Row"]
+type Profile = Omit<Database["public"]["Tables"]["profiles"]["Row"], "email">
 type Freelancer = Database["public"]["Tables"]["freelancers"]["Row"]
 type ExtraCost = Database["public"]["Tables"]["extra_costs"]["Row"] & {
   clients: { name: string } | null
@@ -248,7 +248,7 @@ export function RegistroList() {
     let cancelled = false
     const loadWorkers = async () => {
       const [profilesRes, freelancersRes] = await Promise.all([
-        supabase.from("profiles").select("*").order("full_name"),
+        supabase.from("profiles").select("id, full_name, username, role, is_active, created_at").order("full_name"),
         supabase.from("freelancers").select("*").order("name"),
       ])
       if (cancelled) return

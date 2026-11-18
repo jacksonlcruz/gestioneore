@@ -176,7 +176,7 @@ export function GestioneManager() {
       const [clientsRes, freelancersRes, profilesRes] = await Promise.all([
         supabase.from("clients").select("*").order("name"),
         supabase.from("freelancers").select("*").order("name"),
-        supabase.from("profiles").select("*").order("full_name"),
+        supabase.rpc("admin_list_profiles"),
       ])
       if (cancelled) return
       if (clientsRes.data) setClients(clientsRes.data)
@@ -558,7 +558,7 @@ export function GestioneManager() {
       }
 
       setEmployeeDialog(initialEmployeeDialog)
-      const { data: profilesData } = await supabase.from("profiles").select("*").order("full_name")
+      const { data: profilesData } = await supabase.rpc("admin_list_profiles")
       if (profilesData) setProfiles(profilesData)
     } catch {
       toast.add({ title: "Errore", description: "Errore di connessione", type: "error" })
@@ -651,7 +651,7 @@ export function GestioneManager() {
       // Recarrega os dados
       const [freelancersRes, profilesRes] = await Promise.all([
         supabase.from("freelancers").select("*").order("name"),
-        supabase.from("profiles").select("*").order("full_name"),
+        supabase.rpc("admin_list_profiles"),
       ])
       if (freelancersRes.data) setFreelancers(freelancersRes.data)
       if (profilesRes.data) setProfiles(profilesRes.data)
@@ -692,7 +692,7 @@ export function GestioneManager() {
       // Recarrega os dados
       const [freelancersRes, profilesRes] = await Promise.all([
         supabase.from("freelancers").select("*").order("name"),
-        supabase.from("profiles").select("*").order("full_name"),
+        supabase.rpc("admin_list_profiles"),
       ])
       if (freelancersRes.data) setFreelancers(freelancersRes.data)
       if (profilesRes.data) setProfiles(profilesRes.data)
