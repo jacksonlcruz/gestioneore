@@ -1,4 +1,5 @@
 import { ChangePasswordForm } from "@/components/change-password-form"
+import { ProfileHeader } from "@/components/profile-header"
 
 export default function ProfiloPage() {
   return (
@@ -10,6 +11,7 @@ export default function ProfiloPage() {
         </p>
       </div>
 
+      <ProfileHeader />
       <ChangePasswordForm />
     </div>
   )

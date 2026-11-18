@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
+import { initialsOf } from "@/lib/initials"
 
 const navLinks = [
   { href: "/", label: "Nuovo Inserimento", icon: LayoutDashboard },
@@ -28,15 +29,6 @@ const tabLinks = [
   { href: "/report", label: "Report", icon: Clock },
   { href: "/profilo", label: "Profilo", icon: User },
 ]
-
-// Iniciais para o avatar do celular (ex.: "Jackson Linhares" -> "JL")
-function initialsOf(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean)
-  if (parts.length === 0) return "?"
-  const first = parts[0][0] ?? ""
-  const last = parts.length > 1 ? parts[parts.length - 1][0] ?? "" : ""
-  return (first + last).toUpperCase()
-}
 
 const publicRoute = "/login"
 
