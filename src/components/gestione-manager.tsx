@@ -852,7 +852,7 @@ export function GestioneManager() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="text-amber-600"
+                              className="text-amber-400"
                               onClick={() => openConvertUserToFreelancer(profile)}
                               aria-label={`Converti ${profile.full_name || "utente"} in Collaboratore`}
                               title="Converti in Collaboratore"
@@ -869,7 +869,7 @@ export function GestioneManager() {
                               {(profile.is_active ?? true) ? (
                                 <UserX className="h-4 w-4 text-destructive" />
                               ) : (
-                                <UserCheck className="h-4 w-4 text-green-600" />
+                                <UserCheck className="h-4 w-4 text-emerald-400" />
                               )}
                             </Button>
                           </div>
@@ -961,7 +961,7 @@ export function GestioneManager() {
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className="text-green-600"
+                                  className="text-emerald-400"
                                   disabled={isTogglingClient === client.id}
                                   onClick={() => handleReactivateClient(client.id)}
                                   aria-label={`Ripristina ${client.name}`}
@@ -1033,7 +1033,7 @@ export function GestioneManager() {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="text-green-600"
+                                className="text-emerald-400"
                                 onClick={() => openConvertFreelancer(freelancer)}
                                 aria-label={`Promuovi ${freelancer.name} a Dipendente`}
                                 title="Promuovi a Dipendente"
