@@ -129,6 +129,20 @@
   html {
     @apply font-sans;
   }
+  /* Campos nativos de data/hora (iOS) têm largura mínima própria e estouravam o cartão */
+  input[type="date"],
+  input[type="time"] {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  /* Filhos de grids podem encolher, evitando estouro horizontal */
+  .grid > * {
+    min-width: 0;
+  }
 }
 
 /* Animations */
