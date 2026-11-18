@@ -46,8 +46,23 @@ export async function POST(request: Request) {
     )
   }
 
+  // Admin pode trocar sem informar a senha atual; os demais devem informá-la
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single()
+  const isAdmin = profile?.role?.toLowerCase() === "admin"
+
+  if (!isAdmin && (typeof currentPassword !== "string" || !currentPassword)) {
+    return NextResponse.json(
+      { message: "Inserisci la password attuale" },
+      { status: 400 }
+    )
+  }
+
   // Verifica la password attuale
-  if (currentPassword) {
+  if (typeof currentPassword === "string" && currentPassword) {
     const { error: signInError } = await supabase.auth.signInWithPassword({
       email: user.email!,
       password: currentPassword,
