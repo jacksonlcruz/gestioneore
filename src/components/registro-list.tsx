@@ -761,11 +761,11 @@ export function RegistroList() {
               {/* Mobile: Cards */}
               <div className="space-y-3 md:hidden">
                 {groupedRecords.map((group) => (
-                  <Card key={group.key} className="shadow-sm border-border/50 rounded-xl overflow-hidden">
+                  <Card key={group.key} className="border-border/60 border-l-[3px] border-l-primary/70 rounded-2xl bg-card/80 shadow-none overflow-hidden">
                     <CardContent className="space-y-3 pt-4">
                       <div className="flex items-start justify-between gap-2">
                         <div className="space-y-1">
-                          <p className="font-semibold text-[15px]">{group.clients?.name}</p>
+                          <p className="text-base font-semibold tracking-tight">{group.clients?.name}</p>
                           <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                             <CalendarDays className="h-3.5 w-3.5" />
                             {formatDate(group.date)}
@@ -799,9 +799,9 @@ export function RegistroList() {
                         ) : null}
                       </div>
 
-                      <div className="flex items-center gap-2 rounded-lg bg-muted/40 px-3 py-2">
+                      <div className="flex items-center gap-2 rounded-xl bg-primary/10 px-3 py-2.5">
                         <Clock className="h-4 w-4 text-primary" />
-                        <p className="text-sm font-medium">
+                        <p className="text-sm font-semibold tabular-nums">
                           {formatTime(group.start_time)} - {formatTime(group.end_time)}{" "}
                           <span className="text-muted-foreground font-normal">
                             ({calculateDuration(group.start_time, group.end_time)})
