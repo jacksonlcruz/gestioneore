@@ -24,6 +24,7 @@ const navLinks = [
 const tabLinks = [
   { href: "/", label: "Inserisci", icon: LayoutDashboard },
   { href: "/registro", label: "Registro", icon: FileText },
+  { href: "/calcolo-rapido", label: "Calcolo", icon: Calculator },
   { href: "/report", label: "Report", icon: Clock },
   { href: "/profilo", label: "Profilo", icon: User },
 ]
