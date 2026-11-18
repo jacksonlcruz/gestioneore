@@ -1,5 +1,7 @@
 import { ChangePasswordForm } from "@/components/change-password-form"
 import { ProfileHeader } from "@/components/profile-header"
+import { ThemeToggle } from "@/components/theme-toggle"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
 export default function ProfiloPage() {
   return (
@@ -12,6 +14,19 @@ export default function ProfiloPage() {
       </div>
 
       <ProfileHeader />
+
+      <Card className="rounded-2xl border-border/60 shadow-none">
+        <CardHeader>
+          <CardTitle className="text-base">Aspetto</CardTitle>
+          <CardDescription>
+            Scelta salvata in questo dispositivo
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ThemeToggle />
+        </CardContent>
+      </Card>
+
       <ChangePasswordForm />
     </div>
   )
