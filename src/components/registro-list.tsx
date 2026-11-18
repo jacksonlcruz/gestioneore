@@ -721,19 +721,19 @@ export function RegistroList() {
       </Card>
 
       <Tabs defaultValue="ore">
-        <TabsList className="flex flex-col sm:flex-row w-full sm:w-auto bg-slate-100 p-1.5 rounded-xl border border-slate-200/80 sm:inline-flex gap-1.5 h-auto">
+        <TabsList className="flex flex-col sm:flex-row w-full sm:w-auto bg-muted/60 p-1.5 rounded-2xl border border-border sm:inline-flex gap-1.5 h-auto">
           <TabsTrigger
             value="ore"
-            className="w-full sm:w-auto justify-center rounded-lg px-4 py-2.5 text-xs sm:text-sm font-medium transition-all duration-150 data-active:!bg-blue-600 data-active:!text-white data-active:!shadow-md !bg-transparent !text-slate-600 hover:bg-slate-200/60 flex items-center gap-2"
+            className="w-full sm:w-auto min-h-11 justify-center rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-150 data-active:!bg-primary data-active:!text-primary-foreground data-active:!shadow-md !bg-transparent !text-muted-foreground hover:bg-accent/60 flex items-center gap-2"
           >
-            <Clock className="h-4 w-4 data-active:!text-white shrink-0" />
+            <Clock className="h-4 w-4 shrink-0" />
             <span>Registro Ore</span>
           </TabsTrigger>
           <TabsTrigger
             value="extra"
-            className="w-full sm:w-auto justify-center rounded-lg px-4 py-2.5 text-xs sm:text-sm font-medium transition-all duration-150 data-active:!bg-amber-600 data-active:!text-white data-active:!shadow-md !bg-transparent !text-slate-600 hover:bg-slate-200/60 flex items-center gap-2"
+            className="w-full sm:w-auto min-h-11 justify-center rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-150 data-active:!bg-amber-400 data-active:!text-amber-950 data-active:!shadow-md !bg-transparent !text-muted-foreground hover:bg-accent/60 flex items-center gap-2"
           >
-            <CalendarDays className="h-4 w-4 data-active:!text-white shrink-0" />
+            <CalendarDays className="h-4 w-4 shrink-0" />
             <span>Costi Extra e Materiali</span>
           </TabsTrigger>
         </TabsList>

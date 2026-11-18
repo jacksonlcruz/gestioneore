@@ -802,16 +802,16 @@ export function ReportGenerator() {
         <TabsList className="flex flex-col sm:flex-row w-full sm:w-auto bg-muted/60 p-1 rounded-xl sm:inline-flex gap-1 h-auto">
           <TabsTrigger
             value="employee"
-            className="w-full sm:w-auto justify-center rounded-lg px-4 py-2.5 text-xs sm:text-sm font-medium transition-all duration-150 data-active:!bg-blue-600 data-active:!text-white data-active:!shadow-md !bg-transparent !text-slate-600 hover:bg-slate-200/60 flex items-center gap-2"
+            className="w-full sm:w-auto justify-center rounded-lg px-4 py-2.5 text-xs sm:text-sm font-medium transition-all duration-150 data-active:!bg-primary data-active:!text-primary-foreground data-active:!shadow-md !bg-transparent !text-muted-foreground hover:bg-accent/60 flex items-center gap-2"
           >
-            <User className="h-4 w-4 data-active:!text-white shrink-0" />
+            <User className="h-4 w-4 shrink-0" />
             <span>Report per Dipendente / Collaboratore</span>
           </TabsTrigger>
           <TabsTrigger
             value="client"
-            className="w-full sm:w-auto justify-center rounded-lg px-4 py-2.5 text-xs sm:text-sm font-medium transition-all duration-150 data-active:!bg-emerald-600 data-active:!text-white data-active:!shadow-md !bg-transparent !text-slate-600 hover:bg-slate-200/60 flex items-center gap-2"
+            className="w-full sm:w-auto justify-center rounded-lg px-4 py-2.5 text-xs sm:text-sm font-medium transition-all duration-150 data-active:!bg-emerald-400 data-active:!text-emerald-950 data-active:!shadow-md !bg-transparent !text-muted-foreground hover:bg-accent/60 flex items-center gap-2"
           >
-            <Building2 className="h-4 w-4 data-active:!text-white shrink-0" />
+            <Building2 className="h-4 w-4 shrink-0" />
             <span>Report per Cliente</span>
           </TabsTrigger>
         </TabsList>
@@ -1152,7 +1152,7 @@ export function ReportGenerator() {
                   <input
                     type="checkbox"
                     id="hide-times"
-                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                    className="h-4 w-4 rounded border-input text-primary focus:ring-primary"
                     checked={hideTimes}
                     onChange={(e) => setHideTimes(e.target.checked)}
                   />
