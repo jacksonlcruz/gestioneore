@@ -4,7 +4,6 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Clock, LogIn } from "lucide-react"
 
-import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -29,38 +28,14 @@ export function LoginForm() {
     setIsLoading(true)
 
     try {
-      let email = identifier.trim()
+      // Login feito no servidor: o e-mail do usuário nunca chega ao navegador
+      const res = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ identifier: identifier.trim(), password }),
+      })
 
-      // Se identifier não contiver "@", resolver via API route
-      if (!email.includes("@")) {
-        const res = await fetch("/api/resolve-identifier", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ identifier: email }),
-        })
-
-        if (!res.ok) {
-          toast.add({
-            title: "Credenziali non valide. Riprova.",
-            type: "error",
-          })
-          setIsLoading(false)
-          return
-        }
-
-        const data = await res.json()
-        email = data.email
-      }
-
-      const supabase = createClient()
-
-      const { data: signInData, error } =
-        await supabase.auth.signInWithPassword({
-          email,
-          password,
-        })
-
-      if (error || !signInData.user) {
+      if (!res.ok) {
         toast.add({
           title: "Credenziali non valide. Riprova.",
           type: "error",
@@ -71,6 +46,7 @@ export function LoginForm() {
 
       // Todos os usuários desembarcam na página inicial de lançamento de horas
       router.push("/")
+      router.refresh()
     } catch {
       toast.add({
         title: "Errore di connessione. Riprova.",
