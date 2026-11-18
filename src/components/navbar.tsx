@@ -49,6 +49,16 @@ export function Navbar() {
   const [isAdmin, setIsAdmin] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
 
+  // Enquanto o menu do celular está aberto, a página de trás não rola
+  useEffect(() => {
+    if (!isOpen) return
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    return () => {
+      document.body.style.overflow = previousOverflow
+    }
+  }, [isOpen])
+
   useEffect(() => {
     const supabase = createClient()
 
@@ -194,7 +204,7 @@ export function Navbar() {
 
       {/* Menu mobile */}
       {isOpen && (
-        <nav className="animate-slide-in-top border-t border-border/40 bg-background/95 backdrop-blur-xl px-4 py-4 md:hidden max-h-[calc(100vh-4rem)] overflow-y-auto">
+        <nav className="animate-slide-in-top border-t border-border/40 bg-background/95 backdrop-blur-xl px-4 py-4 md:hidden max-h-[calc(100vh-4rem)] overflow-y-auto overscroll-contain">
           <div className="space-y-1.5">
             {filteredLinks.map((link) => {
               const Icon = link.icon
