@@ -684,7 +684,7 @@ export function InsertionForm() {
               {entryMode === "hours" && (
                 <>
                   {/* Orari */}
-                  <div className="rounded-xl bg-muted/30 p-4 space-y-4 border border-border/50">
+                  <div className="rounded-2xl bg-card/60 p-4 space-y-4 border border-border/60">
                     <div className="grid gap-4 sm:grid-cols-2">
                       <div className="space-y-2">
                         <Label htmlFor="start-time" className="text-sm font-medium">Ora Inizio</Label>
@@ -727,7 +727,7 @@ export function InsertionForm() {
 
                   {/* Lavoratore Principale */}
                   {currentUserProfile && (
-                    <div className="rounded-xl bg-primary/5 p-4 space-y-2 border border-primary/20">
+                    <div className="rounded-2xl bg-primary/10 p-4 space-y-2 border border-primary/30">
                       <Label className="text-sm font-medium">Lavoratore Principale</Label>
                       <div className="flex items-center gap-2">
                         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
@@ -741,7 +741,7 @@ export function InsertionForm() {
                   )}
 
                   {/* Partecipanti al Servizio */}
-                  <div className="rounded-xl bg-muted/30 p-4 space-y-4 border border-border/50">
+                  <div className="rounded-2xl bg-card/60 p-4 space-y-4 border border-border/60">
                     <div className="flex items-center gap-2.5">
                       <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10">
                         <Users className="h-4 w-4 text-primary" />
@@ -872,7 +872,7 @@ export function InsertionForm() {
 
               {/* Costo Extra / Materiale Opzionale */}
               {entryMode === "hours" && (
-                <div className="rounded-xl bg-amber-50 dark:bg-amber-950/20 p-4 space-y-4 border border-amber-200 dark:border-amber-800/40">
+                <div className="rounded-2xl bg-amber-500/10 p-4 space-y-4 border border-amber-400/30">
                   <div>
                     <Label className="text-sm font-medium">
                       Aggiungi Costo Extra / Materiale (Opzionale)
@@ -921,7 +921,7 @@ export function InsertionForm() {
               )}
 
               {entryMode === "extra" && (
-                <div className="rounded-xl bg-amber-50 dark:bg-amber-950/20 p-4 space-y-4 border border-amber-200 dark:border-amber-800/40">
+                <div className="rounded-2xl bg-amber-500/10 p-4 space-y-4 border border-amber-400/30">
                   <div>
                     <Label className="text-sm font-medium">Costo Extra / Materiale</Label>
                     <p className="text-xs text-muted-foreground">
@@ -969,7 +969,7 @@ export function InsertionForm() {
 
               <Button
                 type="submit"
-                className="w-full rounded-xl h-14 text-lg font-bold shadow-md transition-all duration-150 hover:shadow-lg"
+                className="w-full rounded-2xl h-14 text-lg font-bold shadow-md transition-all duration-150 hover:shadow-lg"
                 size="lg"
                 disabled={isSubmitting}
               >
