@@ -1029,7 +1029,7 @@ export function ReportGenerator() {
                                   <TableHead className="font-semibold text-xs md:text-sm md:font-medium">Cliente</TableHead>
                                   <TableHead className="font-semibold text-xs md:text-sm md:font-medium">Orario</TableHead>
                                   <TableHead className="font-semibold text-xs md:text-sm md:font-medium">Durata (ore)</TableHead>
-                                  <TableHead className="font-semibold text-xs md:text-sm md:font-medium">Note</TableHead>
+                                  <TableHead className="hidden md:table-cell font-semibold text-xs md:text-sm md:font-medium">Note</TableHead>
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
@@ -1041,7 +1041,7 @@ export function ReportGenerator() {
                                       {row.startTime} - {row.endTime}
                                     </TableCell>
                                     <TableCell className="text-xs md:text-sm font-medium">{row.durationHours.toFixed(2)}</TableCell>
-                                    <TableCell className="text-xs md:text-sm max-w-[150px] truncate cursor-help" title={row.observation || undefined}>
+                                    <TableCell className="hidden md:table-cell text-xs md:text-sm max-w-[150px] truncate cursor-help" title={row.observation || undefined}>
                                       {row.observation || <span className="text-muted-foreground">—</span>}
                                     </TableCell>
                                   </TableRow>
@@ -1328,7 +1328,7 @@ export function ReportGenerator() {
                                   <TableHead className="font-semibold text-xs md:text-sm md:font-medium">
                                     {hideTimes ? "Durata (ore)" : "Orario / Durata"}
                                   </TableHead>
-                                  <TableHead className="font-semibold text-xs md:text-sm md:font-medium">Note</TableHead>
+                                  <TableHead className="hidden md:table-cell font-semibold text-xs md:text-sm md:font-medium">Note</TableHead>
                                   {isAdmin && <TableHead className="w-[50px] text-right font-semibold text-xs md:text-sm md:font-medium">Azioni</TableHead>}
                                 </TableRow>
                               </TableHeader>
@@ -1359,7 +1359,7 @@ export function ReportGenerator() {
                                         </>
                                       )}
                                     </TableCell>
-                                    <TableCell className="text-xs md:text-sm max-w-[150px] truncate cursor-help" title={row.observation || undefined}>
+                                    <TableCell className="hidden md:table-cell text-xs md:text-sm max-w-[150px] truncate cursor-help" title={row.observation || undefined}>
                                       {row.observation || <span className="text-muted-foreground">—</span>}
                                     </TableCell>
                                     {isAdmin && (
