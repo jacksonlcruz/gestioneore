@@ -18,7 +18,7 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 
 type Client = Database["public"]["Tables"]["clients"]["Row"]
-type Profile = Database["public"]["Tables"]["profiles"]["Row"]
+type Profile = Omit<Database["public"]["Tables"]["profiles"]["Row"], "email">
 type Freelancer = Database["public"]["Tables"]["freelancers"]["Row"]
 
 type ServiceRecord = Database["public"]["Tables"]["service_records"]["Row"] & {
@@ -99,7 +99,7 @@ export function DashboardOverview() {
     const loadData = async () => {
       const [clientsRes, profilesRes, freelancersRes] = await Promise.all([
         supabase.from("clients").select("*").order("name"),
-        supabase.from("profiles").select("*").order("full_name"),
+        supabase.from("profiles").select("id, full_name, username, role, is_active, created_at").order("full_name"),
         supabase.from("freelancers").select("*").order("name"),
       ])
       if (cancelled) return

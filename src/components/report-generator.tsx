@@ -62,7 +62,7 @@ import {
 
 type Client = Database["public"]["Tables"]["clients"]["Row"]
 type Freelancer = Database["public"]["Tables"]["freelancers"]["Row"]
-type Profile = Database["public"]["Tables"]["profiles"]["Row"]
+type Profile = Omit<Database["public"]["Tables"]["profiles"]["Row"], "email">
 
 type Worker = {
   id: string
@@ -334,7 +334,7 @@ export function ReportGenerator() {
     const loadData = async () => {
       const [clientsRes, profilesRes, freelancersRes] = await Promise.all([
         supabase.from("clients").select("*").order("name"),
-        supabase.from("profiles").select("*").order("full_name"),
+        supabase.from("profiles").select("id, full_name, username, role, is_active, created_at").order("full_name"),
         supabase.from("freelancers").select("*").order("name"),
       ])
       if (clientsRes.data) setClients(clientsRes.data)

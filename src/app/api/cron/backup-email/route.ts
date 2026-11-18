@@ -1,16 +1,24 @@
-import { createClient } from "@/lib/supabase/server"
+import { createClient } from "@supabase/supabase-js"
+import { timingSafeEqual } from "crypto"
 import { NextResponse } from "next/server"
 
 export async function GET(request: Request) {
-  // Proteção de acesso: valida o header Authorization com CRON_SECRET
-  const authHeader = request.headers.get("Authorization")
-  const expectedToken = `Bearer ${process.env.CRON_SECRET}`
+  // Proteção de acesso: valida o header Authorization com CRON_SECRET (comparação em tempo constante)
+  const authHeader = request.headers.get("Authorization") ?? ""
+  const expectedToken = `Bearer ${process.env.CRON_SECRET ?? ""}`
+  const authBuf = Buffer.from(authHeader)
+  const expBuf = Buffer.from(expectedToken)
 
-  if (!process.env.CRON_SECRET || authHeader !== expectedToken) {
+  if (!process.env.CRON_SECRET || authBuf.length !== expBuf.length || !timingSafeEqual(authBuf, expBuf)) {
     return NextResponse.json({ error: "Non autorizzato" }, { status: 401 })
   }
 
-  const supabase = await createClient()
+  // Service role: o backup precisa ler todas as tabelas, independentemente de RLS e sessão
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false, autoRefreshToken: false } }
+  )
 
   try {
     // Coleta todos os dados em paralelo

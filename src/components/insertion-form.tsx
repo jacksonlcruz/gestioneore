@@ -31,11 +31,10 @@ import {
 import { Form } from "@/components/ui/form"
 import { toast } from "@/components/ui/toast"
 import { AutocompleteInput } from "@/components/ui/autocomplete-input"
-import { mergeObservations } from "@/lib/registri-utils"
 
 type Client = Database["public"]["Tables"]["clients"]["Row"]
 type Freelancer = Database["public"]["Tables"]["freelancers"]["Row"]
-type Profile = Database["public"]["Tables"]["profiles"]["Row"]
+type Profile = Omit<Database["public"]["Tables"]["profiles"]["Row"], "email">
 
 const formSchema = z
   .object({
@@ -144,7 +143,7 @@ export function InsertionForm() {
 
       const [clientsRes, employeesRes, freelancersRes] = await Promise.all([
         supabase.from("clients").select("*").eq("active", true).order("name"),
-        supabase.from("profiles").select("*").order("full_name"),
+        supabase.from("profiles").select("id, full_name, username, role, is_active, created_at").order("full_name"),
         supabase.from("freelancers").select("*").order("name"),
       ])
 
@@ -155,7 +154,7 @@ export function InsertionForm() {
       if (user) {
         const { data: profile } = await supabase
           .from("profiles")
-          .select("*")
+          .select("id, full_name, username, role, is_active, created_at")
           .eq("id", user.id)
           .single()
 
@@ -348,118 +347,36 @@ export function InsertionForm() {
 
     setIsSubmitting(true)
 
-    // --- Upsert / Auto-merge: detect an existing record on the same slot ---
+    // --- Auto-merge: o banco une ao registro de horário idêntico, se existir ---
     const startTime = values.startTime as string
     const endTime = values.endTime as string
 
-    const { data: fetchedRecords, error: fetchRecordsError } = await supabase
-      .from("service_records")
-      .select("id, start_time, end_time, observation, service_participants(profile_id, freelancer_id)")
-      .eq("client_id", values.clientId)
-      .eq("date", values.date)
+    const { data: mergedRecordId, error: mergeError } = await supabase.rpc(
+      "merge_service_record_slot",
+      {
+        p_client_id: values.clientId,
+        p_date: values.date,
+        p_start: startTime,
+        p_end: endTime,
+        p_observation: values.observation ?? "",
+        p_profile_ids: selectedEmployeeIds,
+        p_freelancer_ids: selectedFreelancerIds,
+      }
+    )
 
-    if (fetchRecordsError) {
-      console.error("Errore Supabase Select (service_records):", {
-        message: fetchRecordsError.message,
-        details: fetchRecordsError.details,
-        hint: fetchRecordsError.hint,
-        code: fetchRecordsError.code,
-      })
+    if (mergeError) {
+      console.error("Errore Supabase RPC (merge_service_record_slot):", mergeError)
       toast.add({
         title: "Errore durante il salvataggio",
-        description: fetchRecordsError.message || "Si è verificato un errore durante la registrazione.",
+        description: mergeError.message || "Si è verificato un errore durante la registrazione.",
         type: "error",
       })
       setIsSubmitting(false)
       return
     }
 
-    const existingRecords = (fetchedRecords ?? []) as Array<{
-      id: string
-      start_time: string
-      end_time: string
-      observation: string | null
-      service_participants: Array<{ profile_id: string | null; freelancer_id: string | null }>
-    }>
-    const toHM = (t: string | null | undefined): string => (t ?? "").slice(0, 5)
-    const exactMatch = existingRecords.find(
-      (r) => toHM(r.start_time) === startTime && toHM(r.end_time) === endTime
-    )
-    const overlappingRecords = existingRecords.filter(
-      (r) =>
-        r.id !== (exactMatch?.id ?? "") &&
-        toHM(r.start_time) < endTime &&
-        toHM(r.end_time) > startTime
-    )
-
-    // Existing record with the same slot: merge collaborators and notes instead of duplicating.
-    if (exactMatch) {
-      const mergedObservation = mergeObservations([
-        exactMatch.observation,
-        values.observation,
-      ])
-
-      const { error: updateError } = await supabase
-        .from("service_records")
-        .update({ observation: mergedObservation })
-        .eq("id", exactMatch.id)
-
-      if (updateError) {
-        console.error("Errore Supabase Update (service_records):", updateError)
-        toast.add({
-          title: "Errore durante l'aggiornamento",
-          description: updateError.message || "Si è verificato un errore durante la fusione del registro.",
-          type: "error",
-        })
-        setIsSubmitting(false)
-        return
-      }
-
-      // Merge participants, avoiding duplicate employee/freelancer rows.
-      const existingParticipantKeys = new Set(
-        (exactMatch.service_participants ?? []).map((p) =>
-          p.profile_id ? `emp:${p.profile_id}` : `frl:${p.freelancer_id}`
-        )
-      )
-      const newParticipants = [
-        ...selectedEmployeeIds
-          .filter((profileId) => !existingParticipantKeys.has(`emp:${profileId}`))
-          .map((profileId) => ({
-            service_record_id: exactMatch.id,
-            worker_type: "employee" as const,
-            profile_id: profileId,
-          })),
-        ...selectedFreelancerIds
-          .filter((freelancerId) => !existingParticipantKeys.has(`frl:${freelancerId}`))
-          .map((freelancerId) => ({
-            service_record_id: exactMatch.id,
-            worker_type: "freelancer" as const,
-            freelancer_id: freelancerId,
-          })),
-      ]
-
-      if (newParticipants.length > 0) {
-        const { error: participantsInsertError } = await supabase
-          .from("service_participants")
-          .insert(newParticipants)
-        if (participantsInsertError) {
-          console.error("Errore Supabase Insert (service_participants):", {
-            message: participantsInsertError.message,
-            details: participantsInsertError.details,
-            hint: participantsInsertError.hint,
-            code: participantsInsertError.code,
-          })
-          toast.add({
-            title: "Errore durante il salvataggio",
-            description: participantsInsertError.message || "Si è verificato un errore durante la registrazione.",
-            type: "error",
-          })
-          setIsSubmitting(false)
-          return
-        }
-      }
-
-      // Link an eventual extra cost to the existing merged record.
+    // Registro idêntico encontrado e unido: vincula custo extra e encerra
+    if (mergedRecordId) {
       const mergeExtraAmount = values.extraCostAmount ? parseFloat(values.extraCostAmount) : 0
       if (mergeExtraAmount > 0 && values.extraCostDescription?.trim()) {
         const { error: extraCostInsertError } = await supabase
@@ -469,7 +386,7 @@ export function InsertionForm() {
             date: values.date,
             description: values.extraCostDescription.trim(),
             amount: mergeExtraAmount,
-            service_record_id: exactMatch.id,
+            service_record_id: mergedRecordId,
             created_by: currentUserProfile?.id ?? null,
           })
         if (extraCostInsertError) {
@@ -503,6 +420,45 @@ export function InsertionForm() {
       setIsSubmitting(false)
       return
     }
+
+    // Sem registro idêntico: verifica sobreposição com registros visíveis ao usuário
+    const { data: fetchedRecords, error: fetchRecordsError } = await supabase
+      .from("service_records")
+      .select("id, start_time, end_time, observation, service_participants(profile_id, freelancer_id)")
+      .eq("client_id", values.clientId)
+      .eq("date", values.date)
+
+    if (fetchRecordsError) {
+      console.error("Errore Supabase Select (service_records):", {
+        message: fetchRecordsError.message,
+        details: fetchRecordsError.details,
+        hint: fetchRecordsError.hint,
+        code: fetchRecordsError.code,
+      })
+      toast.add({
+        title: "Errore durante il salvataggio",
+        description: fetchRecordsError.message || "Si è verificato un errore durante la registrazione.",
+        type: "error",
+      })
+      setIsSubmitting(false)
+      return
+    }
+
+    const existingRecords = (fetchedRecords ?? []) as Array<{
+      id: string
+      start_time: string
+      end_time: string
+      observation: string | null
+      service_participants: Array<{ profile_id: string | null; freelancer_id: string | null }>
+    }>
+    const toHM = (t: string | null | undefined): string => (t ?? "").slice(0, 5)
+    // Registro idêntico já foi tratado pela RPC; aqui só sobreposição parcial
+    const overlappingRecords = existingRecords.filter(
+      (r) =>
+        toHM(r.start_time) < endTime &&
+        toHM(r.end_time) > startTime &&
+        !(toHM(r.start_time) === startTime && toHM(r.end_time) === endTime)
+    )
 
     // Overlapping (non exact) slot: warn the user instead of saving.
     if (overlappingRecords.length > 0) {
