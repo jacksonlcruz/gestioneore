@@ -54,7 +54,7 @@ export function ProfileHeader() {
           className={cn(
             "flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-lg font-semibold",
             isAdmin
-              ? "bg-violet-500/20 text-violet-200 ring-2 ring-violet-400/60"
+              ? "bg-violet-500/20 text-violet-700 dark:text-violet-200 ring-2 ring-violet-400/60"
               : "bg-primary/15 text-primary ring-1 ring-border"
           )}
           aria-hidden="true"

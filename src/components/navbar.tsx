@@ -150,8 +150,8 @@ export function Navbar() {
               {userRole && (
                 <span className={`inline-flex h-4 items-center rounded-full px-1.5 text-[10px] font-semibold uppercase tracking-wide ${
                   userRole === "admin"
-                    ? "bg-violet-500/20 text-violet-200"
-                    : "bg-slate-500/20 text-slate-200"
+                    ? "bg-violet-500/20 text-violet-700 dark:text-violet-200"
+                    : "bg-slate-500/20 text-slate-700 dark:text-slate-200"
                 }`}>
                   {userRole === "admin" ? "Admin" : "Dip."}
                 </span>
@@ -172,7 +172,7 @@ export function Navbar() {
               className={cn(
                 "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold",
                 userRole === "admin"
-                  ? "bg-violet-500/20 text-violet-200 ring-2 ring-violet-400/60"
+                  ? "bg-violet-500/20 text-violet-700 dark:text-violet-200 ring-2 ring-violet-400/60"
                   : "bg-primary/15 text-primary ring-1 ring-border"
               )}
             >
@@ -227,8 +227,8 @@ export function Navbar() {
               {userRole && (
                 <span className={`inline-flex h-5 shrink-0 items-center rounded-full px-2 text-[10px] font-semibold uppercase tracking-wide ${
                   userRole === "admin"
-                    ? "bg-violet-500/20 text-violet-200"
-                    : "bg-slate-500/20 text-slate-200"
+                    ? "bg-violet-500/20 text-violet-700 dark:text-violet-200"
+                    : "bg-slate-500/20 text-slate-700 dark:text-slate-200"
                 }`}>
                   {userRole === "admin" ? "Admin" : "Dip."}
                 </span>

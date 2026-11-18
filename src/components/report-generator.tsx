@@ -1389,7 +1389,7 @@ export function ReportGenerator() {
                       {/* Costi Extra per cliente */}
                       {extraCosts.length > 0 && (
                         <div className="ml-9 space-y-2 mt-4">
-                          <p className="text-xs md:text-sm font-semibold text-amber-700 dark:text-amber-400">
+                          <p className="text-xs md:text-sm font-semibold text-amber-700 dark:text-amber-600 dark:text-amber-400">
                             Costi Extra / Materiali
                           </p>
                           <div className="overflow-x-auto rounded-lg border border-amber-200 dark:border-amber-800/40 bg-amber-50 dark:bg-amber-950/20">
@@ -1416,7 +1416,7 @@ export function ReportGenerator() {
                           </div>
                           <p className="text-xs md:text-sm font-semibold text-right">
                             Totale Costi Extra:{" "}
-                            <span className="text-amber-700 dark:text-amber-400">
+                            <span className="text-amber-700 dark:text-amber-600 dark:text-amber-400">
                               {totalExtraCosts.toFixed(2).replace(".", ",")} €
                             </span>
                           </p>

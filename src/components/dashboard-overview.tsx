@@ -314,7 +314,7 @@ export function DashboardOverview() {
           <CardContent className="p-5">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/20">
-                <Clock className="h-5 w-5 text-blue-400" />
+                <Clock className="h-5 w-5 text-blue-600 dark:text-blue-400" />
               </div>
               <div>
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
@@ -332,7 +332,7 @@ export function DashboardOverview() {
           <CardContent className="p-5">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/20">
-                <Euro className="h-5 w-5 text-emerald-400" />
+                <Euro className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
               </div>
               <div>
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
@@ -350,7 +350,7 @@ export function DashboardOverview() {
           <CardContent className="p-5">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/20">
-                <Building2 className="h-5 w-5 text-violet-400" />
+                <Building2 className="h-5 w-5 text-violet-600 dark:text-violet-400" />
               </div>
               <div>
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
@@ -366,7 +366,7 @@ export function DashboardOverview() {
           <CardContent className="p-5">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/20">
-                <Users className="h-5 w-5 text-amber-400" />
+                <Users className="h-5 w-5 text-amber-600 dark:text-amber-400" />
               </div>
               <div>
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
