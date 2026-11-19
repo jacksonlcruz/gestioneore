@@ -1,3 +1,4 @@
+import { createClient as createAdminClient } from "@supabase/supabase-js"
 import { createClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
 
@@ -25,6 +26,14 @@ export async function GET() {
     return NextResponse.json({ error: "Non autorizzato" }, { status: 403 })
   }
 
+  // Leitura completa com service role (já autorizada acima como admin).
+  // A sessão do usuário não lê o e-mail em profiles por restrição de coluna.
+  const data = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false, autoRefreshToken: false } }
+  )
+
   try {
     // Coleta todos os dados em paralelo
     const [
@@ -35,12 +44,12 @@ export async function GET() {
       serviceParticipantsRes,
       extraCostsRes,
     ] = await Promise.all([
-      supabase.from("clients").select("*").order("name"),
-      supabase.from("profiles").select("id, full_name, username, email, role, is_active, created_at").order("full_name"),
-      supabase.from("freelancers").select("*").order("name"),
-      supabase.from("service_records").select("*").order("date"),
-      supabase.from("service_participants").select("*"),
-      supabase.from("extra_costs").select("*").order("date"),
+      data.from("clients").select("*").order("name"),
+      data.from("profiles").select("id, full_name, username, email, role, is_active, created_at").order("full_name"),
+      data.from("freelancers").select("*").order("name"),
+      data.from("service_records").select("*").order("date"),
+      data.from("service_participants").select("*"),
+      data.from("extra_costs").select("*").order("date"),
     ])
 
     // Verifica erros
